@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 class PostBase(BaseModel):
@@ -8,9 +8,10 @@ class PostBase(BaseModel):
     album: str = Field(..., description="Album within category")
     title: str = Field(..., max_length=255)
     description: str
-    content_url: str = Field(..., max_length=500, description="S3 URL to main content")
-    thumbnail_url: str = Field(..., max_length=500, description="S3 URL to thumbnail")
+    content_url: str = Field(..., description="URL to main content (S3 or base64 data URL)")
+    thumbnail_url: str = Field(..., description="URL to thumbnail (S3 or base64 data URL)")
     date: datetime = Field(..., description="Date for sorting/feed")
+    tags: List[str] = Field(default_factory=list, description="Tags for technology, techniques, emotions, etc.")
 
 class PostCreate(PostBase):
     pass
@@ -23,6 +24,7 @@ class PostUpdate(BaseModel):
     content_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     date: Optional[datetime] = None
+    tags: Optional[List[str]] = None
 
 class PostResponse(PostBase):
     id: UUID
@@ -31,4 +33,3 @@ class PostResponse(PostBase):
     
     class Config:
         from_attributes = True
-

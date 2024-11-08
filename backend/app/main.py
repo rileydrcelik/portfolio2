@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
-from app.routes import posts
+from app.routes import posts, upload
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +24,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(posts.router)
+app.include_router(upload.router)
 
 @app.get("/")
 async def root():
@@ -32,4 +33,3 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
-
