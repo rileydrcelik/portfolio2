@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -10,10 +10,16 @@ interface ImageModalProps {
   image: string;
   title: string;
   description: string;
+  date?: string;
+  tags?: string[];
+  postId?: string;
+  onDelete?: (postId: string) => void;
 }
 
-export default function ImageModal({ isOpen, onClose, image, title, description }: ImageModalProps) {
+export default function ImageModal({ isOpen, onClose, image, title, description, date, tags, postId, onDelete }: ImageModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const handleImageClick = () => {
     setIsFullscreen(true);
@@ -21,6 +27,28 @@ export default function ImageModal({ isOpen, onClose, image, title, description 
   
   const handleCloseFullscreen = () => {
     setIsFullscreen(false);
+  };
+  
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!postId || !onDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(postId);
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      setIsDeleting(false);
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
   };
   
   return (
@@ -49,12 +77,24 @@ export default function ImageModal({ isOpen, onClose, image, title, description 
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-white/20">
                 <h2 className="text-2xl font-bold text-white">{title}</h2>
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors backdrop-blur-sm"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {postId && onDelete && (
+                    <button
+                      onClick={handleDeleteClick}
+                      disabled={isDeleting}
+                      className="p-2 hover:bg-red-500/20 rounded-lg transition-colors backdrop-blur-sm disabled:opacity-50"
+                      title="Delete post"
+                    >
+                      <Trash2 className="w-5 h-5 text-white" />
+                    </button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors backdrop-blur-sm"
+                  >
+                    <X className="w-6 h-6 text-white" />
+                  </button>
+                </div>
               </div>
               
               {/* Content */}
@@ -71,47 +111,78 @@ export default function ImageModal({ isOpen, onClose, image, title, description 
                 </div>
                 
                 {/* Text Section */}
-                <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20">
+                <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20 overflow-y-auto">
                   <div className="space-y-6">
                     {/* Description */}
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
-                      <p className="text-white/80 leading-relaxed">{description}</p>
+                      <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{description}</p>
                     </div>
                     
-                    {/* Lorem Ipsum Content */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-3">About This Work</h3>
-                      <p className="text-white/80 leading-relaxed mb-4">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
-                        incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
-                        exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                      </p>
-                      <p className="text-white/80 leading-relaxed mb-4">
-                        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
-                        fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in 
-                        culpa qui officia deserunt mollit anim id est laborum.
-                      </p>
-                      <p className="text-white/80 leading-relaxed">
-                        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium 
-                        doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore 
-                        veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-                      </p>
-                    </div>
+                    {/* Tags */}
+                    {tags && tags.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Technical Details */}
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
                       <div className="space-y-2 text-white/80">
-                        <p><span className="font-medium">Medium:</span> Digital Art</p>
-                        <p><span className="font-medium">Dimensions:</span> 1920 x 1080px</p>
-                        <p><span className="font-medium">Created:</span> 2024</p>
-                        <p><span className="font-medium">Category:</span> {title.includes('Art') ? 'Artwork' : 'Photography'}</p>
+                        {date && (
+                          <p>
+                            <span className="font-medium">Created:</span>{' '}
+                            {new Date(date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+              
+              {/* Delete Confirmation Dialog */}
+              {showDeleteConfirm && (
+                <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-10 rounded-2xl">
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 max-w-md w-full mx-4">
+                    <h3 className="text-xl font-bold text-white mb-4">Delete Post?</h3>
+                    <p className="text-white/80 mb-6">
+                      Are you sure you want to delete "{title}"? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                      <button
+                        onClick={handleDeleteCancel}
+                        disabled={isDeleting}
+                        className="px-4 py-2 text-sm font-medium text-white bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDeleteConfirm}
+                        disabled={isDeleting}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-500/20 hover:bg-red-500/30 border border-red-400/50 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
           
