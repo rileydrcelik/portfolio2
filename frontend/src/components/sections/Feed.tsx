@@ -6,6 +6,7 @@ import ImageTile from '@/components/ui/ImageTile';
 import { imageSets } from '@/data/imageData';
 import ImageModal from '@/components/ui/ImageModal';
 import FeedSkeleton from '@/components/ui/FeedSkeleton';
+import { getPosts, Post, deletePost } from '@/lib/api';
 
 // 9-column grid system: small items (2x3, 3x2, 2x2) and large items (4x3, 3x4, 3x4)
 const TILE_SHAPES = {
@@ -36,11 +37,17 @@ interface FeedItem {
   category: string;
   tileShape: TileShape;
   album?: string;
+  date?: string; // ISO date string from database
+  postId?: string; // UUID from database for deletion
+  tags?: string[]; // Tags array
 }
 
 interface FeedProps {
   directory: string;
   activeAlbum?: string;
+  category?: string; // Optional category to fetch from database
+  useDatabase?: boolean; // Flag to use database instead of static images
+  activeTag?: string; // Active tag filter
 }
 
 interface Position {
@@ -97,7 +104,60 @@ const findClosestTileShape = (aspectRatio: number): TileShape => {
   return closestShape;
 };
 
-// Function to generate feed items based on directory
+// Function to convert Post objects to FeedItem objects (with image dimensions)
+const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
+  const feedItems: FeedItem[] = [];
+  
+  for (let index = 0; index < posts.length; index++) {
+    const post = posts[index];
+    
+    // Use thumbnail_url for the feed display
+    const imageUrl = post.thumbnail_url || post.content_url;
+    
+    // Get image dimensions to calculate aspect ratio
+    const dimensions = await getImageDimensions(imageUrl);
+    const aspectRatio = dimensions.width / dimensions.height;
+    
+    // Find the closest tile shape based on aspect ratio
+    const tileShape = findClosestTileShape(aspectRatio);
+    
+    feedItems.push({
+      id: parseInt(post.id.replace(/-/g, '').substring(0, 8), 16) || index + 1, // Convert UUID to number for ID
+      title: post.title,
+      description: post.description,
+      image: imageUrl,
+      category: post.category,
+      tileShape: tileShape,
+      album: post.album,
+      date: post.date, // Include the date from the post
+      postId: post.id, // Store the actual UUID for deletion
+      tags: post.tags || [], // Include tags from the post
+    });
+  }
+  
+  return feedItems;
+};
+
+// Function to fetch all posts from database (no album filtering)
+const fetchAllPostsFromDatabase = async (category: string): Promise<Post[]> => {
+  try {
+    console.log(`[Feed] Fetching all posts from database - category: ${category}`);
+    
+    // Fetch all posts for this category (no album filter)
+    const posts = await getPosts({
+      category,
+      limit: 1000, // Get all posts
+    });
+    
+    console.log(`[Feed] Received ${posts.length} posts from database`);
+    return posts;
+  } catch (error) {
+    console.error('[Feed] Error fetching posts from database:', error);
+    return [];
+  }
+};
+
+// Function to generate feed items based on directory (static images)
 const generateFeedItems = async (directory: string, activeAlbum: string = 'all'): Promise<FeedItem[]> => {
   const images = imageSets[directory] || imageSets['pinterest_placeholders'];
   
@@ -137,11 +197,24 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
         const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 16) => {
           const [positions, setPositions] = useState<Position[]>([]);
           const [containerHeight, setContainerHeight] = useState(0);
+          const itemsLength = items.length;
+          const itemsKey = items.map(item => item.id).join(','); // Stable key based on item IDs
+          const prevItemsKeyRef = useRef<string>('');
 
           useEffect(() => {
-            console.log('🎯 use2DPacking effect running:', { itemsLength: items.length, containerWidth });
-            if (items.length === 0 || containerWidth === 0) {
-              console.log('⏭️ Skipping layout calculation - items:', items.length, 'width:', containerWidth);
+            // Skip if items haven't actually changed (same IDs)
+            if (itemsKey === prevItemsKeyRef.current && itemsLength > 0) {
+              console.log('🎯 Skipping - items unchanged');
+              return;
+            }
+            prevItemsKeyRef.current = itemsKey;
+            
+            console.log('🎯 use2DPacking effect running:', { itemsLength, containerWidth });
+            if (itemsLength === 0 || containerWidth === 0) {
+              console.log('⏭️ Clearing positions - items:', itemsLength, 'width:', containerWidth);
+              // Only update if positions are not already empty
+              setPositions(prev => prev.length === 0 ? prev : []);
+              setContainerHeight(prev => prev === 0 ? prev : 0);
               return;
             }
 
@@ -203,28 +276,40 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
       
       // No gap filling - just use the regular items
       const allPositions = newPositions;
-      setPositions(allPositions);
       
       // Calculate container height
       let maxY = 0;
       allPositions.forEach(pos => {
         maxY = Math.max(maxY, pos.y + pos.height);
       });
-      setContainerHeight(maxY);
+      
+      // Only update if positions actually changed
+      setPositions(prev => {
+        if (prev.length !== allPositions.length) return allPositions;
+        // Check if any position changed
+        const changed = prev.some((oldPos, i) => {
+          const newPos = allPositions[i];
+          return !newPos || oldPos.x !== newPos.x || oldPos.y !== newPos.y || oldPos.item.id !== newPos.item.id;
+        });
+        return changed ? allPositions : prev;
+      });
+      
+      setContainerHeight(prev => prev === maxY ? prev : maxY);
     };
 
     calculatePositions();
-  }, [items, containerWidth, gap]);
+  }, [itemsLength, itemsKey, containerWidth, gap]);
 
   return { positions, containerHeight };
 };
 
-export default function Feed({ directory, activeAlbum = 'all' }: FeedProps) {
+export default function Feed({ directory, activeAlbum = 'all', category, useDatabase = false, activeTag = '' }: FeedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [selectedImage, setSelectedImage] = useState<FeedItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+  const [allFeedItems, setAllFeedItems] = useState<FeedItem[]>([]); // Store all items (unfiltered)
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]); // Filtered items to display
   const [isLoading, setIsLoading] = useState(true);
   
   // Callback ref to measure width when element is mounted
@@ -235,26 +320,82 @@ export default function Feed({ directory, activeAlbum = 'all' }: FeedProps) {
     }
   }, []);
   
-  // Load feed items with aspect ratio calculation
+  // Fetch all posts from database (only when category/directory changes)
   useEffect(() => {
-    const loadFeedItems = async () => {
-      console.log('🚀 Starting to load feed items...');
+    const loadAllFeedItems = async () => {
+      console.log('🚀 Starting to load all feed items...', { useDatabase, category, directory });
+      
       setIsLoading(true);
+      
       try {
-        const items = await generateFeedItems(directory, activeAlbum);
-        console.log('✅ Feed items loaded:', items.length, 'items');
-        setFeedItems(items);
+        let items: FeedItem[];
+        
+        if (useDatabase && category) {
+          // Fetch all posts from database (no album filtering)
+          const posts = await fetchAllPostsFromDatabase(category);
+          // Convert posts to feed items
+          items = await convertPostsToFeedItems(posts);
+          console.log('✅ All feed items loaded from database:', items.length, 'items');
+        } else {
+          // Use static images - fetch all (no album filtering)
+          items = await generateFeedItems(directory, 'all');
+          console.log('✅ All feed items loaded from static images:', items.length, 'items');
+        }
+        
+        setAllFeedItems(items);
       } catch (error) {
         console.error('❌ Error loading feed items:', error);
-        setFeedItems([]);
+        setAllFeedItems([]);
       } finally {
-        console.log('🏁 Finished loading feed items, setting isLoading to false');
+        console.log('🏁 Finished loading all feed items, setting isLoading to false');
         setIsLoading(false);
       }
     };
     
-    loadFeedItems();
-  }, [directory, activeAlbum]);
+    loadAllFeedItems();
+  }, [directory, category ?? '', useDatabase ?? false]); // Only refetch when category/directory changes
+  
+  // Filter feed items locally based on activeAlbum
+  useEffect(() => {
+    if (allFeedItems.length === 0) {
+      setFeedItems([]);
+      return;
+    }
+    
+    // Debug: Log all album values
+    const uniqueAlbums = [...new Set(allFeedItems.map(item => item.album))];
+    console.log(`[Feed] All unique albums in feed items:`, uniqueAlbums);
+    console.log(`[Feed] Filtering - activeAlbum: "${activeAlbum}" (type: ${typeof activeAlbum}), activeTag: "${activeTag}"`);
+    
+    // Filter locally from allFeedItems by album and tag
+    let filtered = allFeedItems;
+    
+    // Filter by album
+    if (activeAlbum !== 'all') {
+      filtered = filtered.filter(item => {
+        const matches = item.album === activeAlbum;
+        if (!matches) {
+          console.log(`[Feed] Item "${item.title}" album "${item.album}" does not match "${activeAlbum}"`);
+        }
+        return matches;
+      });
+    }
+    
+    // Filter by tag
+    if (activeTag && activeTag !== '') {
+      filtered = filtered.filter(item => {
+        const hasTag = item.tags && item.tags.includes(activeTag);
+        if (!hasTag) {
+          console.log(`[Feed] Item "${item.title}" does not have tag "${activeTag}"`);
+        }
+        return hasTag;
+      });
+    }
+    
+    console.log(`[Feed] Filtering result - activeAlbum: ${activeAlbum}, activeTag: ${activeTag}, showing ${filtered.length} of ${allFeedItems.length} items`);
+    console.log(`[Feed] Filtered items:`, filtered.map(item => ({ title: item.title, album: item.album, tags: item.tags })));
+    setFeedItems(filtered);
+  }, [activeAlbum, activeTag, allFeedItems]);
   
   const { positions, containerHeight } = use2DPacking(
     containerWidth > 0 ? feedItems : [],
@@ -278,6 +419,24 @@ export default function Feed({ directory, activeAlbum = 'all' }: FeedProps) {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedImage(null);
+  };
+  
+  const handleDeletePost = async (postId: string) => {
+    console.log('[Feed] Deleting post:', postId);
+    try {
+      await deletePost(postId);
+      console.log('[Feed] Post deleted successfully');
+      
+      // Remove from allFeedItems
+      setAllFeedItems(prev => prev.filter(item => item.postId !== postId));
+      
+      // Close modal
+      setIsModalOpen(false);
+      setSelectedImage(null);
+    } catch (err) {
+      console.error('[Feed] Error deleting post:', err);
+      throw err; // Re-throw so ImageModal can handle it
+    }
   };
 
   if (isLoading) {
@@ -342,6 +501,10 @@ export default function Feed({ directory, activeAlbum = 'all' }: FeedProps) {
           image={selectedImage.image}
           title={selectedImage.title}
           description={selectedImage.description}
+          date={selectedImage.date}
+          tags={selectedImage.tags}
+          postId={selectedImage.postId}
+          onDelete={useDatabase && category ? handleDeletePost : undefined}
         />
       )}
     </div>
