@@ -42,6 +42,12 @@ export default function SplashSection() {
   const fadeEnd = windowHeight * 1.0; // Fully faded at end of viewport
   const fadeOut = windowHeight > 0 ? Math.max(0, Math.min(1, (fadeEnd - scrollY) / (fadeEnd - fadeStart))) : 1;
   
+  // Sidebar animation reversal - starts at 0% and goes faster than scroll
+  const sidebarSpeedMultiplier = 1.75; // Makes it reverse 1.75x faster than scroll
+  const effectiveScrollY = scrollY * sidebarSpeedMultiplier;
+  const sidebarFadeEnd = windowHeight * 1.0;
+  const sidebarFadeOut = windowHeight > 0 ? Math.max(0, Math.min(1, (sidebarFadeEnd - effectiveScrollY) / sidebarFadeEnd)) : 1;
+  
   // Title opacity: fade in on mount, then fade out on scroll
   const titleOpacity = titleVisible ? fadeOut : 0;
   
@@ -66,8 +72,14 @@ export default function SplashSection() {
             background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.175) 0%, rgba(255, 255, 255, 0) 100%)'
           }}
           initial={{ y: 288, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 1.2, ease: [0.04, 0.62, 0.23, 0.98] }}
+          animate={{ 
+            y: 288 * (1 - sidebarFadeOut), 
+            opacity: sidebarFadeOut 
+          }}
+          transition={{ 
+            duration: scrollY > 0 ? 0 : 1.2, 
+            ease: scrollY > 0 ? "linear" : [0.04, 0.62, 0.23, 0.98]
+          }}
         >
           <div className="flex flex-col items-center px-2 pb-4 pt-6 pointer-events-auto" style={{ gap: '1.5rem' }}>
             <Tooltip
@@ -130,8 +142,15 @@ export default function SplashSection() {
             background: 'linear-gradient(0deg, rgba(255, 255, 255, 0.175) 0%, rgba(255, 255, 255, 0) 100%)'
           }}
           initial={{ y: -96, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 1.2, delay: 0.1, ease: [0.04, 0.62, 0.23, 0.98] }}
+          animate={{ 
+            y: -96 * (1 - sidebarFadeOut), 
+            opacity: sidebarFadeOut 
+          }}
+          transition={{ 
+            duration: scrollY > 0 ? 0 : 1.2, 
+            delay: scrollY > 0 ? 0 : 0.1,
+            ease: scrollY > 0 ? "linear" : [0.04, 0.62, 0.23, 0.98]
+          }}
         >
           <div className="flex flex-col items-center px-2 pt-4 pb-6 pointer-events-auto" style={{ gap: '1.5rem' }}>
             <Tooltip

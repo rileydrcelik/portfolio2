@@ -310,10 +310,10 @@ export default function Feed({ directory, activeAlbum = 'all' }: FeedProps) {
                         }}
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.6, delay: index * 0.05 }}
+                        transition={{ duration: 0.3, delay: index * 0.02, ease: "easeOut" }}
                         onClick={() => handleImageClick(item)}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
+                        whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
                       >
                         <ImageTile item={item} index={index} />
                       </motion.div>
@@ -326,9 +326,9 @@ export default function Feed({ directory, activeAlbum = 'all' }: FeedProps) {
           className="text-center mt-12"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
         >
-          <button className="px-8 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors">
+          <button className="px-8 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors duration-200">
             Load More
           </button>
         </motion.div>

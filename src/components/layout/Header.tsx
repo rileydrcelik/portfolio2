@@ -11,7 +11,7 @@ const navigation = [
   { name: 'Music', href: '/music' },
   { name: 'Artwork', href: '/artwork' },
   { name: 'Projects', href: '/projects' },
-  { name: 'Apparel', href: '/apparel' },
+  { name: 'Shop', href: '/shop' },
 ];
 
 export default function Header() {

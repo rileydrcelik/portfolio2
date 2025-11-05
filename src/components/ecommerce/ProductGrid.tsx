@@ -50,7 +50,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
             >
-              <Link href={`/apparel/${product.slug}`}>
+              <Link href={`/shop/${product.slug}`}>
                 <div className="aspect-[16/9] w-full overflow-hidden rounded-lg bg-gray-200">
                   <Image
                     src={product.images[0]}
@@ -92,5 +92,8 @@ export default function ProductGrid({ products }: ProductGridProps) {
     </div>
   );
 }
+
+
+
 
 

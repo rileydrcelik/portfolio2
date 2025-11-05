@@ -28,8 +28,8 @@ export default function LayoutClient({ children }: LayoutClientProps) {
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          // Show sidebar after scrolling past splash (first 100vh)
-          const showThreshold = window.innerHeight;
+          // Show sidebar after scrolling past 80% of splash (earlier appearance)
+          const showThreshold = window.innerHeight * 0.8;
           setShowSidebar(window.scrollY >= showThreshold);
           ticking = false;
         });
@@ -39,7 +39,7 @@ export default function LayoutClient({ children }: LayoutClientProps) {
 
     // Check initial position on home page immediately
     const checkInitial = () => {
-      const showThreshold = window.innerHeight;
+      const showThreshold = window.innerHeight * 0.8;
       setShowSidebar(window.scrollY >= showThreshold);
     };
     checkInitial();

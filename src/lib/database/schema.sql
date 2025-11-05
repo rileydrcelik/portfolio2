@@ -128,3 +128,6 @@ INSERT INTO subjects (name, slug, description, "order") VALUES
 ('Apparel', 'apparel', 'Clothing and merchandise', 4);
 
 
+
+
+
