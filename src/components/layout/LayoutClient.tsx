@@ -1,0 +1,61 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import SideBar from './SideBar';
+import ContentWrapper from './ContentWrapper';
+
+interface LayoutClientProps {
+  children: React.ReactNode;
+}
+
+export default function LayoutClient({ children }: LayoutClientProps) {
+  const [showSidebar, setShowSidebar] = useState(false);
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
+
+  useEffect(() => {
+    // Don't adjust on non-home pages - always show sidebar
+    if (!isHomePage) {
+      setShowSidebar(true);
+      return;
+    }
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Show sidebar after scrolling past splash (first 100vh)
+          const showThreshold = window.innerHeight;
+          setShowSidebar(window.scrollY >= showThreshold);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    // Check initial position
+    handleScroll();
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isHomePage]);
+
+  return (
+    <div className="min-h-screen bg-black flex">
+      {/* Sidebar - always maintains space but conditionally visible */}
+      <div className="w-16 flex-shrink-0">
+        <div className="sticky top-0 h-screen">
+          {showSidebar && <SideBar />}
+        </div>
+      </div>
+      
+      {/* Content */}
+      <ContentWrapper>
+        {children}
+      </ContentWrapper>
+    </div>
+  );
+}
+
