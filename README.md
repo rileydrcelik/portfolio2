@@ -1,36 +1,152 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Riley Drcelik Portfolio
+
+A modern, full-stack portfolio website built with Next.js, featuring creative content management and e-commerce capabilities.
+
+## Features
+
+- **Portfolio Showcase**: Display music, artwork, projects, and apparel
+- **Content Management**: Admin dashboard for easy content updates
+- **E-commerce**: Stripe integration for apparel sales
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+- **Modern Stack**: Next.js 14, TypeScript, Firebase Auth, PostgreSQL
+
+## Tech Stack
+
+### Frontend
+- **Next.js 14** with App Router
+- **React 18** with TypeScript
+- **Tailwind CSS** for styling
+- **Headless UI** for accessible components
+- **Framer Motion** for animations
+- **Lucide React** for icons
+
+### Backend & Services
+- **PostgreSQL** for database
+- **Firebase Auth** for authentication
+- **AWS S3** for file storage
+- **Stripe** for payments
+- **Vercel** for deployment
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── music/             # Music subject page
+│   ├── artwork/           # Artwork subject page
+│   ├── projects/          # Projects subject page
+│   ├── apparel/           # E-commerce page
+│   └── admin/             # Admin dashboard
+├── components/
+│   ├── layout/            # Layout components
+│   ├── sections/          # Page sections
+│   ├── admin/             # Admin components
+│   ├── ecommerce/         # E-commerce components
+│   └── ui/                # Reusable UI components
+├── lib/                   # Utility libraries
+│   ├── database/          # Database schema and config
+│   ├── firebase.ts        # Firebase configuration
+│   ├── stripe.ts          # Stripe configuration
+│   └── s3.ts              # AWS S3 configuration
+├── types/                 # TypeScript type definitions
+├── hooks/                 # Custom React hooks
+├── contexts/              # React contexts
+└── utils/                 # Utility functions
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+ 
+- PostgreSQL database
+- Firebase project
+- AWS S3 buckets
+- Stripe account
 
+### Installation
+
+1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd rileydrcelik_portfolio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables
+```bash
+cp env.example .env.local
+# Edit .env.local with your actual values
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Set up the database
+```bash
+# Run the SQL schema in your PostgreSQL database
+psql -d your_database < src/lib/database/schema.sql
+```
 
-## Learn More
+5. Start the development server
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Visit [http://localhost:3000](http://localhost:3000) to see the site.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment Variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See `env.example` for all required environment variables.
 
-## Deploy on Vercel
+### Required Services
+- **Firebase**: For authentication
+- **PostgreSQL**: For data storage
+- **AWS S3**: For file storage (images, videos, audio)
+- **Stripe**: For payment processing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Database Schema
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application uses PostgreSQL with the following main tables:
+- `subjects` - Main content categories (music, artwork, projects, apparel)
+- `albums` - Collections within each subject
+- `content_items` - Individual pieces of content
+- `products` - E-commerce products
+- `orders` - Customer orders
+- `users` - User accounts (for future social features)
+
+## Deployment
+
+The application is designed to be deployed on Vercel:
+
+1. Connect your GitHub repository to Vercel
+2. Set up environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+## Admin Dashboard
+
+Access the admin dashboard at `/admin` to:
+- Manage content across all subjects
+- Upload and organize media files
+- Process e-commerce orders
+- View site analytics
+- Configure site settings
+
+## Future Features
+
+- User authentication for visitors
+- Social features (likes, comments, follows)
+- Blog functionality
+- Advanced analytics
+- Content recommendation system
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+This project is private and proprietary.
