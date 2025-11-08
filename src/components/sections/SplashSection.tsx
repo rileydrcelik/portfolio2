@@ -2,16 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, HomeIcon, UserIcon, PaintBrushIcon, CameraIcon, MusicalNoteIcon, CodeBracketIcon, ShoppingBagIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
-import SplashSidebar from '@/components/ui/SplashSidebar';
+import Link from 'next/link';
+import { Tooltip } from '@chakra-ui/react';
+import GlassTooltipLabel from '@/components/ui/GlassTooltipLabel';
 
 export default function SplashSection() {
   const [scrollY, setScrollY] = useState(0);
   const [windowHeight, setWindowHeight] = useState(0);
+  const [titleVisible, setTitleVisible] = useState(false);
   
   useEffect(() => {
     setWindowHeight(window.innerHeight);
+    
+    // Trigger title fade-in after a brief delay
+    setTimeout(() => {
+      setTitleVisible(true);
+    }, 300);
     
     let ticking = false;
     
@@ -34,17 +42,144 @@ export default function SplashSection() {
   const fadeEnd = windowHeight * 1.0; // Fully faded at end of viewport
   const fadeOut = windowHeight > 0 ? Math.max(0, Math.min(1, (fadeEnd - scrollY) / (fadeEnd - fadeStart))) : 1;
   
+  // Title opacity: fade in on mount, then fade out on scroll
+  const titleOpacity = titleVisible ? fadeOut : 0;
+  
   // Scroll indicator fades out faster - starts fading immediately on scroll
   const scrollIndicatorOpacity = windowHeight > 0 ? Math.max(0, Math.min(1, (windowHeight * 0.3 - scrollY) / (windowHeight * 0.3))) : 1;
   
   return (
-    <div className="relative h-screen w-full overflow-hidden pointer-events-none">
-      {/* Custom Splash Sidebar - fades out when scrolling */}
-      <div style={{ opacity: fadeOut, transition: 'opacity 0.4s ease-out', willChange: 'opacity' }}>
-        <SplashSidebar />
+    <>
+      {/* Top Splash Sidebar - first 4 icons */}
+      <div 
+        className="absolute left-0 top-0 h-full w-full pointer-events-none z-50"
+        style={{ 
+          opacity: fadeOut, 
+          transition: 'opacity 0.4s ease-out', 
+          willChange: 'opacity'
+        }}
+      >
+        <motion.div 
+          className="absolute left-4 top-[calc(50%-18rem)] w-16 backdrop-blur-sm text-white rounded-t-2xl pointer-events-auto" 
+          style={{ 
+            backgroundColor: 'rgba(255, 255, 255, 0.175)',
+            background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.175) 0%, rgba(255, 255, 255, 0) 100%)'
+          }}
+          initial={{ y: 288, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 1.2, ease: [0.04, 0.62, 0.23, 0.98] }}
+        >
+          <div className="flex flex-col items-center px-2 pb-4 pt-6 pointer-events-auto" style={{ gap: '1.5rem' }}>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Home" />}
+            >
+              <Link href="/"><HomeIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Bio" />}
+            >
+              <Link href="/about"><UserIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Art" />}
+            >
+              <Link href="/artwork"><PaintBrushIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Photography" />}
+            >
+              <Link href="/photography"><CameraIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Bottom Splash Sidebar - last 4 icons */}
+      <div 
+        className="absolute left-0 top-0 h-full w-full pointer-events-none z-50"
+        style={{ 
+          opacity: fadeOut, 
+          transition: 'opacity 0.4s ease-out', 
+          willChange: 'opacity'
+        }}
+      >
+        <motion.div 
+          className="absolute left-4 top-[calc(50%+6rem)] w-16 backdrop-blur-sm text-white rounded-b-2xl pointer-events-auto" 
+          style={{ 
+            backgroundColor: 'rgba(255, 255, 255, 0.175)',
+            background: 'linear-gradient(0deg, rgba(255, 255, 255, 0.175) 0%, rgba(255, 255, 255, 0) 100%)'
+          }}
+          initial={{ y: -96, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 1.2, delay: 0.1, ease: [0.04, 0.62, 0.23, 0.98] }}
+        >
+          <div className="flex flex-col items-center px-2 pt-4 pb-6 pointer-events-auto" style={{ gap: '1.5rem' }}>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Music" />}
+            >
+              <Link href="/music"><MusicalNoteIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Projects" />}
+            >
+              <Link href="/projects"><CodeBracketIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Apparel" />}
+            >
+              <Link href="/apparel"><ShoppingBagIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+            <Tooltip
+              placement="right"
+              hasArrow={false}
+              offset={[0, 20]}
+              bg="transparent"
+              p={0}
+              label={<GlassTooltipLabel text="Settings" />}
+            >
+              <Link href="/settings"><Cog6ToothIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+            </Tooltip>
+          </div>
+        </motion.div>
       </div>
       
-      {/* Background Image */}
+      <div className="relative h-screen w-full overflow-hidden pointer-events-none">
+        {/* Background Image */}
       <div 
         className="absolute inset-0 z-0 pointer-events-none"
         style={{ 
@@ -72,13 +207,10 @@ export default function SplashSection() {
 
       {/* Content Overlay - Title positioned to break the sidebar */}
       <div className="absolute left-0 top-1/2 transform -translate-y-1/2 z-50 px-4 pointer-events-auto">
-        <motion.div
+        <div
           className="max-w-4xl"
-          initial={{ opacity: 0, x: -50, y: 0 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 1, delay: 0.3 }}
-          style={{ 
-            opacity: fadeOut,
+          style={{
+            opacity: titleOpacity,
             transition: 'opacity 0.4s ease-out',
             willChange: 'opacity'
           }}
@@ -89,7 +221,7 @@ export default function SplashSection() {
           <p className="text-xl md:text-2xl text-white/50 font-serif select-none">
             short description of the project...
           </p>
-        </motion.div>
+        </div>
       </div>
 
       {/* Scroll Indicator */}
@@ -111,6 +243,7 @@ export default function SplashSection() {
         </motion.div>
       </motion.div>
     </div>
+    </>
   );
 }
 

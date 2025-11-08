@@ -36,7 +36,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Splash Section */}
+      {/* Splash Section - extends to cover sidebar area */}
       <div className="relative -ml-16 w-[calc(100%+4rem)]">
         <SplashSection />
       </div>

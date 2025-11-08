@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Tooltip } from '@chakra-ui/react';
 import {
-  SwatchIcon,
+  PaintBrushIcon,
   CameraIcon,
   MusicalNoteIcon,
   CodeBracketIcon,
@@ -14,6 +14,7 @@ import {
 
 import GlassTooltipLabel from '../ui/GlassTooltipLabel';
 
+// Navigation items for subpages
 interface NavigationItem {
   id: string;
   name: string;
@@ -22,7 +23,7 @@ interface NavigationItem {
 }
 
 const subpages: NavigationItem[] = [
-  { id: 'art', name: 'Art', icon: SwatchIcon, href: '/artwork' },
+  { id: 'art', name: 'Art', icon: PaintBrushIcon, href: '/artwork' },
   { id: 'photography', name: 'Photography', icon: CameraIcon, href: '/photography' },
   { id: 'music', name: 'Music', icon: MusicalNoteIcon, href: '/music' },
   { id: 'projects', name: 'Projects', icon: CodeBracketIcon, href: '/projects' },

@@ -10,9 +10,11 @@ interface LayoutClientProps {
 }
 
 export default function LayoutClient({ children }: LayoutClientProps) {
-  const [showSidebar, setShowSidebar] = useState(false);
   const pathname = usePathname();
   const isHomePage = pathname === '/';
+  
+  // Initialize based on page type - hide on home page initially
+  const [showSidebar, setShowSidebar] = useState(!isHomePage);
 
   useEffect(() => {
     // Don't adjust on non-home pages - always show sidebar
@@ -35,8 +37,12 @@ export default function LayoutClient({ children }: LayoutClientProps) {
       }
     };
 
-    // Check initial position
-    handleScroll();
+    // Check initial position on home page immediately
+    const checkInitial = () => {
+      const showThreshold = window.innerHeight;
+      setShowSidebar(window.scrollY >= showThreshold);
+    };
+    checkInitial();
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
