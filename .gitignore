@@ -2,10 +2,6 @@
 
 # dependencies
 /node_modules
-/node_modules/
-frontend/node_modules/
-backend/__pycache__/
-**/__pycache__/
 /.pnp
 .pnp.*
 .yarn/*
@@ -20,6 +16,15 @@ backend/__pycache__/
 # next.js
 /.next/
 /out/
+frontend/.next/
+frontend/out/
+
+# frontend dependencies
+frontend/node_modules/
+
+# backend virtual envs
+backend/venv/
+backend/.venv/
 
 # production
 /build
@@ -34,9 +39,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (exclude all, including example files)
+# env files (can opt-in for committing if needed)
 .env*
-env.example
 
 # vercel
 .vercel

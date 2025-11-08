@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime, func
+from sqlalchemy import Column, String, Text, DateTime, func, Boolean
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 import uuid
 from app.database import Base
@@ -6,13 +6,16 @@ from app.database import Base
 class Post(Base):
     __tablename__ = "posts"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug = Column(String(255), nullable=False, unique=True)
     category = Column(String(50), nullable=False)
     album = Column(String(100), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     content_url = Column(Text, nullable=False)
     thumbnail_url = Column(Text, nullable=False)
+    splash_image_url = Column(Text, nullable=True)
     date = Column(DateTime, nullable=False)
     tags = Column(ARRAY(Text), nullable=False, default=[])
+    is_major = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

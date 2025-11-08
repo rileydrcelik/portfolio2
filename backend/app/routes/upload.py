@@ -1,13 +1,14 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import Optional
-from app.lib.s3 import upload_file_to_s3
+from app.lib.s3 import upload_file_to_s3, delete_file_from_s3
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
 @router.post("/image")
 async def upload_image(
     file: UploadFile = File(...),
-    bucket: Optional[str] = None
+    bucket: Optional[str] = None,
+    folder: Optional[str] = None
 ):
     """
     Upload an image file to S3 and return the public URL.
@@ -26,13 +27,22 @@ async def upload_image(
     print(f"[Upload] Bucket name: {bucket or os.getenv('S3_IMAGES_BUCKET', 'NOT SET')}")
     
     # Validate file type
-    allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-    if file.content_type not in allowed_types:
+    allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    is_image = file.content_type.startswith('image/')
+    is_audio = file.content_type.startswith('audio/')
+
+    if not is_image and not is_audio:
         print(f"[Upload] Invalid file type: {file.content_type}")
         raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}"
+            status_code=415,
+            detail=f"Invalid file type '{file.content_type}'. Allowed image types: {', '.join(allowed_image_types)}. Allowed audio types: audio/*"
         )
+
+    if is_image and file.content_type not in allowed_image_types:
+        print(f"[Upload] Uncommon image type (allowing): {file.content_type}")
+
+    if is_audio:
+        print(f"[Upload] Audio upload detected with content type: {file.content_type}")
     
     # Read file content
     try:
@@ -40,13 +50,15 @@ async def upload_image(
         file_content = await file.read()
         print(f"[Upload] File size: {len(file_content)} bytes")
         
-        # Validate file size (max 10MB)
-        max_size = 10 * 1024 * 1024  # 10MB
+        # Validate file size (max 50MB)
+        max_size = 50 * 1024 * 1024  # 50MB
         if len(file_content) > max_size:
-            print(f"[Upload] File too large: {len(file_content)} bytes")
+            file_size_mb = len(file_content) / (1024 * 1024)
+            max_size_mb = max_size / (1024 * 1024)
+            print(f"[Upload] File too large: {file_size_mb:.2f}MB (max: {max_size_mb}MB)")
             raise HTTPException(
                 status_code=400,
-                detail="File size exceeds 10MB limit"
+                detail=f"File size ({file_size_mb:.2f}MB) exceeds {max_size_mb}MB limit"
             )
         
         # Upload to S3
@@ -55,7 +67,8 @@ async def upload_image(
             file_content=file_content,
             file_name=file.filename or 'image',
             content_type=file.content_type,
-            bucket_name=bucket
+            bucket_name=bucket,
+            folder=folder
         )
         print(f"[Upload] Success! URL: {public_url}")
         
@@ -65,13 +78,16 @@ async def upload_image(
             "size": len(file_content),
             "content_type": file.content_type
         }
-    except HTTPException:
+    except HTTPException as he:
+        print(f"[Upload] HTTPException: {he.detail}")
         raise
     except Exception as e:
         print(f"[Upload] Error: {str(e)}")
         import traceback
         traceback.print_exc()
+        error_detail = str(e)
+        print(f"[Upload] Raising HTTPException with detail: {error_detail}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to upload file: {str(e)}"
+            detail=f"Failed to upload file: {error_detail}"
         )

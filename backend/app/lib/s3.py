@@ -2,8 +2,8 @@ import boto3
 from botocore.exceptions import ClientError
 import os
 from typing import Optional
+from urllib.parse import urlparse
 import uuid
-from datetime import datetime
 
 def get_s3_client():
     """Initialize and return S3 client"""
@@ -18,7 +18,8 @@ def upload_file_to_s3(
     file_content: bytes,
     file_name: str,
     content_type: str,
-    bucket_name: Optional[str] = None
+    bucket_name: Optional[str] = None,
+    folder: Optional[str] = None
 ) -> str:
     """
     Upload a file to S3 and return the public URL.
@@ -39,9 +40,11 @@ def upload_file_to_s3(
     file_extension = os.path.splitext(file_name)[1] or '.jpg'
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     
-    # Optional: Organize by date (year/month)
-    date_prefix = datetime.now().strftime('%Y/%m')
-    s3_key = f"{date_prefix}/{unique_filename}"
+    sanitized_folder = folder.strip().strip('/') if folder else ''
+    if sanitized_folder:
+        s3_key = f"{sanitized_folder}/{unique_filename}"
+    else:
+        s3_key = unique_filename
     
     try:
         s3_client = get_s3_client()
@@ -61,3 +64,34 @@ def upload_file_to_s3(
         return public_url
     except ClientError as e:
         raise Exception(f"Failed to upload file to S3: {str(e)}")
+
+
+def delete_file_from_s3(file_url: Optional[str], bucket_name: Optional[str] = None) -> None:
+    """Delete an object from S3 using its public URL."""
+    if not file_url:
+        return
+
+    if not bucket_name:
+        bucket_name = os.getenv('S3_IMAGES_BUCKET', 'portfoliowebsite-images')
+
+    parsed = urlparse(file_url)
+    if not parsed.netloc:
+        return
+
+    s3_host_prefix = f"{bucket_name}.s3"
+    # Handles both regional and global S3 endpoints
+    if parsed.netloc.startswith(s3_host_prefix):
+        object_key = parsed.path.lstrip('/')
+    else:
+        # Fallback: assume virtual-hosted-style URL with bucket in host
+        object_key = parsed.path.lstrip('/')
+
+    if not object_key:
+        return
+
+    try:
+        s3_client = get_s3_client()
+        s3_client.delete_object(Bucket=bucket_name, Key=object_key)
+    except ClientError as e:
+        # Log the error but don't raise to avoid blocking DB deletion
+        print(f"[S3] Failed to delete {object_key} from {bucket_name}: {str(e)}")
