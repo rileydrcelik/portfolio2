@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2 } from 'lucide-react';
-import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -23,6 +22,7 @@ interface ImageModalProps {
   slug?: string;
   category?: string;
   album?: string;
+  isText?: boolean;
 }
 
 export default function ImageModal({
@@ -40,6 +40,7 @@ export default function ImageModal({
   slug,
   category,
   album,
+  isText,
 }: ImageModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -70,7 +71,7 @@ export default function ImageModal({
   }, [isOpen]);
   
   const handleImageClick = () => {
-    if (isAudio || (contentUrl && category === 'projects')) {
+    if (isAudio || (contentUrl && (category === 'projects' || category === 'bio')) || isText) {
       return;
     }
     setIsFullscreen(true);
@@ -103,12 +104,13 @@ export default function ImageModal({
   };
 
   const isProject = category === 'projects';
+  const isBio = category === 'bio' || isText;
 
   const articleContent = useMemo(() => {
-    if (!isProject || !contentUrl) return '';
+    if (!(isProject || isBio) || !contentUrl) return '';
     const isMarkdown = contentUrl.includes('\n') || contentUrl.includes('#') || contentUrl.includes('*') || contentUrl.length > 200;
     return isMarkdown ? contentUrl : '';
-  }, [isProject, contentUrl]);
+  }, [isProject, isBio, contentUrl]);
 
   const normalizeLink = (href?: string) => {
     if (!href) return '#';
@@ -184,8 +186,8 @@ export default function ImageModal({
               </div>
               
               {/* Content */}
-              {isProject ? (
-                <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t border-white/20 lg:border-t-0">
+              {isProject || isBio ? (
+                <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t lg:border-t-0">
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
@@ -194,7 +196,7 @@ export default function ImageModal({
 
                     {articleContent && (
                       <div className="space-y-3">
-                        <h3 className="text-lg font-semibold text-white">Project Article</h3>
+                        <h3 className="text-lg font-semibold text-white">{isProject ? 'Project Article' : 'Bio Entry'}</h3>
                         <div className="prose prose-invert prose-headings:font-serif prose-p:text-white/80">
                           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                             {articleContent}
@@ -239,13 +241,15 @@ export default function ImageModal({
               ) : (
                 <div className="flex flex-col lg:flex-row max-h-[calc(90vh-80px)]">
                   <div className="lg:w-1/2 p-6 space-y-4">
-                    <div className="relative cursor-pointer" onClick={handleImageClick}>
-                      <img
-                        src={image}
-                        alt={title}
-                        className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102"
-                      />
-                    </div>
+                    {!(isProject || isBio) && (
+                      <div className="relative cursor-pointer" onClick={handleImageClick}>
+                        <img
+                          src={image}
+                          alt={title}
+                          className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102"
+                        />
+                      </div>
+                    )}
                     {isAudio && contentUrl && (
                       <audio
                         controls

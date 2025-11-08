@@ -16,6 +16,7 @@ const subjects = [
   { id: 'photo', name: 'Photography', icon: '📸' },
   { id: 'music', name: 'Music', icon: '🎵' },
   { id: 'projects', name: 'Projects', icon: '💻' },
+  { id: 'bio', name: 'Bio', icon: '📝' },
   { id: 'apparel', name: 'Apparel', icon: '👕' },
 ];
 
@@ -430,8 +431,9 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     try {
       console.log('[PostModal] Validating form data...');
       const isProject = selectedSubject === 'projects';
+      const isBio = selectedSubject === 'bio';
 
-      if (!contentFile) {
+      if (!contentFile && !isBio) {
         console.error('[PostModal] No file selected');
         setError(isMusic ? 'Please select an audio file' : 'Please upload a cover image');
         setIsSubmitting(false);
@@ -444,7 +446,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         return;
       }
 
-      if (isProject && !articleContent.trim()) {
+      if ((isProject || isBio) && !articleContent.trim()) {
         setError('Project posts need an article before publishing.');
         setIsSubmitting(false);
         return;
@@ -510,7 +512,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         splashImageUrl = uploadedHeroUrl || finalThumbnailUrl;
       }
 
-      if (isProject) {
+      if (isProject || (isBio && articleContent.trim())) {
         uploadedContentUrl = articleContent.trim();
       }
 
@@ -583,6 +585,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const resolvePrimaryFolder = () => {
     if (isMusic) return 'audio';
     if (selectedSubject === 'photo') return 'photography';
+    if (selectedSubject === 'bio') return 'art';
     return 'art';
   };
 
@@ -914,14 +917,16 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                     />
                   </div>
 
-                  {selectedSubject === 'projects' && (
+                  {(selectedSubject === 'projects' || selectedSubject === 'bio') && (
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-white/90 mb-1">
-                          Project Article
+                          {selectedSubject === 'projects' ? 'Project Article' : 'Bio Entry'}
                         </label>
                         <p className="text-xs text-white/60 mb-3">
-                          Craft the full write-up for this project. Use the toolbar to add headings, links, code blocks, and inline images (uploaded straight to S3).
+                          {selectedSubject === 'projects'
+                            ? 'Craft the full write-up for this project. Use the toolbar to add headings, links, code blocks, and inline images (uploaded straight to S3).'
+                            : 'Share text for this bio post. You can embed links and images with the toolbar.'}
                         </p>
                       </div>
                       <MarkdownEditor
@@ -931,7 +936,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         placeholder="Share the story behind this project, the challenges you solved, and anything you learned along the way..."
                       />
                       <p className="text-xs text-white/50">
-                        Tip: the article supports full Markdown (including tables and checklists) and automatically generates responsive images.
+                        Tip: the editor supports full Markdown (including tables and checklists) and uploads inline images to your S3 bucket.
                       </p>
                     </div>
                   )}
@@ -1029,8 +1034,9 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         !selectedAlbum ||
                         !title ||
                         !description ||
-                        !contentFile ||
+                        (!contentFile && selectedSubject !== 'bio') ||
                         (selectedSubject === 'projects' && !articleContent.trim()) ||
+                        (selectedSubject === 'bio' && !contentFile && !articleContent.trim()) ||
                         (isMusic && !thumbnailFile) ||
                         isSubmitting ||
                         isUploading ||

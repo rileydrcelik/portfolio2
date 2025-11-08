@@ -43,6 +43,7 @@ interface FeedItem {
   contentUrl?: string;
   isAudio?: boolean;
   slug?: string;
+  isText?: boolean;
 }
 
 interface FeedProps {
@@ -116,7 +117,8 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     const post = posts[index];
     
     // Use thumbnail_url for the feed display
-    const imageUrl = post.thumbnail_url || post.content_url;
+    const looksLikeText = post.category === 'bio' || (post.content_url && post.content_url.length > 0 && !/^https?:\/\//i.test(post.content_url));
+    const imageUrl = looksLikeText ? (post.thumbnail_url || '') : (post.thumbnail_url || post.content_url);
     const contentUrl = post.content_url;
     const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(contentUrl);
     
@@ -141,6 +143,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       contentUrl,
       isAudio,
       slug: post.slug,
+      isText: Boolean(looksLikeText && !imageUrl),
     });
   }
   
@@ -539,8 +542,9 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           contentUrl={selectedImage.contentUrl}
           isAudio={selectedImage.isAudio}
           slug={selectedImage.slug}
-          album={selectedImage.album}
           category={selectedImage.category}
+          album={selectedImage.album}
+          isText={selectedImage.isText}
           onDelete={useDatabase ? handleDeletePost : undefined}
         />
       )}
