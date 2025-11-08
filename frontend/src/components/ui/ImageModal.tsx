@@ -108,8 +108,7 @@ export default function ImageModal({
 
   const articleContent = useMemo(() => {
     if (!(isProject || isBio) || !contentUrl) return '';
-    const isMarkdown = contentUrl.includes('\n') || contentUrl.includes('#') || contentUrl.includes('*') || contentUrl.length > 200;
-    return isMarkdown ? contentUrl : '';
+    return contentUrl;
   }, [isProject, isBio, contentUrl]);
 
   const normalizeLink = (href?: string) => {
