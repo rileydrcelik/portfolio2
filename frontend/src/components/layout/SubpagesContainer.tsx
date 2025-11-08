@@ -10,6 +10,7 @@ import {
   MusicalNoteIcon,
   CodeBracketIcon,
   ShoppingBagIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 
 import GlassTooltipLabel from '../ui/GlassTooltipLabel';
@@ -23,8 +24,9 @@ interface NavigationItem {
 }
 
 const subpages: NavigationItem[] = [
+  { id: 'bio', name: 'Bio', icon: UserIcon, href: '/bio' },
   { id: 'art', name: 'Art', icon: PaintBrushIcon, href: '/art' },
-  { id: 'photo', name: 'Photography', icon: CameraIcon, href: '/photo' },
+  { id: 'photography', name: 'Photography', icon: CameraIcon, href: '/photo' },
   { id: 'music', name: 'Music', icon: MusicalNoteIcon, href: '/music' },
   { id: 'projects', name: 'Projects', icon: CodeBracketIcon, href: '/projects' },
   { id: 'apparel', name: 'Apparel', icon: ShoppingBagIcon, href: '/apparel' },

@@ -5,6 +5,11 @@ export interface CategoryConfig {
 }
 
 export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
+  bio: {
+    title: 'Bio',
+    directory: 'pinterest_placeholders',
+    slug: 'bio',
+  },
   art: {
     title: 'Art',
     directory: 'art_placeholders',

@@ -21,7 +21,7 @@ interface NavigationItem {
 }
 
 const essentials: NavigationItem[] = [
-  { id: 'bio', name: 'Bio', icon: UserIcon, href: '/about' },
+  { id: 'bio', name: 'Bio', icon: UserIcon, href: '/bio' },
 ];
 
 const settings: NavigationItem[] = [
