@@ -14,24 +14,30 @@ interface Album {
 interface SectionWithFeedProps {
   title: string;
   directory: string;
-  albums: Album[];
+  albums?: Album[];
   category?: string;
   useDatabase?: boolean;
+  initialAlbum?: string;
+  categorySlug?: string;
 }
 
-export default function SectionWithFeed({ title, directory, albums: initialAlbums, category, useDatabase = false }: SectionWithFeedProps) {
-  const [activeAlbum, setActiveAlbum] = useState('all');
+export default function SectionWithFeed({ title, directory, albums: initialAlbums = [], category, useDatabase = false, initialAlbum = 'all', categorySlug }: SectionWithFeedProps) {
+  const [activeAlbum, setActiveAlbum] = useState(initialAlbum);
   const [activeTag, setActiveTag] = useState('');
   const [albums, setAlbums] = useState<Album[]>(initialAlbums);
   const [totalCount, setTotalCount] = useState(0);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
-  // Fetch post counts and tags from database when using database
+  useEffect(() => {
+    setActiveAlbum(initialAlbum);
+  }, [initialAlbum]);
+
+  // Fetch albums, post counts, and tags from database when using database
   useEffect(() => {
     if (useDatabase && category) {
-      const fetchCounts = async () => {
+      const fetchData = async () => {
         try {
-          // Fetch all posts for this category to get counts
+          // Fetch all posts for this category
           const allPosts = await getPosts({ category, limit: 1000 });
           
           // Calculate counts per album
@@ -41,13 +47,14 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
             albumCounts.set(post.album, currentCount + 1);
           });
           
-          // Update albums with actual counts
-          const updatedAlbums = initialAlbums.map(album => ({
-            ...album,
-            count: albumCounts.get(album.id) || 0,
-          }));
+          // Create dynamic albums from unique album values in posts
+          const dynamicAlbums: Album[] = Array.from(albumCounts.entries()).map(([albumSlug, count]) => ({
+            id: albumSlug,
+            name: albumSlug,
+            count: count,
+          })).sort((a, b) => a.name.localeCompare(b.name));
           
-          setAlbums(updatedAlbums);
+          setAlbums(dynamicAlbums);
           
           // Calculate total count
           const total = Array.from(albumCounts.values()).reduce((sum, count) => sum + count, 0);
@@ -62,22 +69,23 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
           });
           setAvailableTags(Array.from(tagSet).sort());
         } catch (error) {
-          console.error('[SectionWithFeed] Error fetching post counts:', error);
-          // Fallback to static counts on error
-          const total = initialAlbums.reduce((sum, album) => sum + album.count, 0);
-          setTotalCount(total);
+          console.error('[SectionWithFeed] Error fetching data:', error);
+          // On error, show empty state
+          setAlbums([]);
+          setTotalCount(0);
           setAvailableTags([]);
         }
       };
       
-      fetchCounts();
-    } else {
-      // Use static counts when not using database
+      fetchData();
+    } else if (initialAlbums.length > 0) {
+      // Use static albums when not using database
       const total = initialAlbums.reduce((sum, album) => sum + album.count, 0);
+      setAlbums(initialAlbums);
       setTotalCount(total);
       setAvailableTags([]);
     }
-  }, [useDatabase, category, initialAlbums]);
+  }, [useDatabase, category]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -91,6 +99,7 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
         tags={availableTags}
         activeTag={activeTag}
         onTagChange={setActiveTag}
+        categorySlug={categorySlug ?? category}
       />
       
       {/* Feed with Filtering */}

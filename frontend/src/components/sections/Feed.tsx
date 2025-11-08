@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useEffect, useRef, useState, useLayoutEffect, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import ImageTile from '@/components/ui/ImageTile';
 import { imageSets } from '@/data/imageData';
 import ImageModal from '@/components/ui/ImageModal';
@@ -40,6 +40,9 @@ interface FeedItem {
   date?: string; // ISO date string from database
   postId?: string; // UUID from database for deletion
   tags?: string[]; // Tags array
+  contentUrl?: string;
+  isAudio?: boolean;
+  slug?: string;
 }
 
 interface FeedProps {
@@ -48,6 +51,7 @@ interface FeedProps {
   category?: string; // Optional category to fetch from database
   useDatabase?: boolean; // Flag to use database instead of static images
   activeTag?: string; // Active tag filter
+  limit?: number; // Optional limit when fetching from database
 }
 
 interface Position {
@@ -113,6 +117,8 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     
     // Use thumbnail_url for the feed display
     const imageUrl = post.thumbnail_url || post.content_url;
+    const contentUrl = post.content_url;
+    const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(contentUrl);
     
     // Get image dimensions to calculate aspect ratio
     const dimensions = await getImageDimensions(imageUrl);
@@ -132,23 +138,26 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       date: post.date, // Include the date from the post
       postId: post.id, // Store the actual UUID for deletion
       tags: post.tags || [], // Include tags from the post
+      contentUrl,
+      isAudio,
+      slug: post.slug,
     });
   }
   
   return feedItems;
 };
 
-// Function to fetch all posts from database (no album filtering)
-const fetchAllPostsFromDatabase = async (category: string): Promise<Post[]> => {
+// Function to fetch posts from database (supports optional category and limit)
+const fetchPostsFromDatabase = async (options: { category?: string; limit?: number }): Promise<Post[]> => {
   try {
-    console.log(`[Feed] Fetching all posts from database - category: ${category}`);
-    
-    // Fetch all posts for this category (no album filter)
-    const posts = await getPosts({
-      category,
-      limit: 1000, // Get all posts
-    });
-    
+    const { category, limit } = options;
+    console.log('[Feed] Fetching posts from database', { category, limit });
+
+    const params: { category?: string; limit?: number } = {};
+    if (category) params.category = category;
+    if (limit) params.limit = limit;
+
+    const posts = await getPosts(params);
     console.log(`[Feed] Received ${posts.length} posts from database`);
     return posts;
   } catch (error) {
@@ -187,6 +196,9 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
       category: directory.replace('_placeholders', '').charAt(0).toUpperCase() + directory.replace('_placeholders', '').slice(1),
       tileShape: tileShape,
       album: imageData.album,
+      contentUrl: undefined,
+      isAudio: false,
+      slug: undefined, // No slug for static images
     });
   }
   
@@ -303,14 +315,15 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
   return { positions, containerHeight };
 };
 
-export default function Feed({ directory, activeAlbum = 'all', category, useDatabase = false, activeTag = '' }: FeedProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function Feed({ directory, activeAlbum = 'all', category, useDatabase = false, activeTag = '', limit }: FeedProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [selectedImage, setSelectedImage] = useState<FeedItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [allFeedItems, setAllFeedItems] = useState<FeedItem[]>([]); // Store all items (unfiltered)
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]); // Filtered items to display
   const [isLoading, setIsLoading] = useState(true);
+  const fetchLimit = limit ?? 1000;
+  const previousUrlRef = useRef<string | null>(null);
   
   // Callback ref to measure width when element is mounted
   const containerRefCallback = useCallback((node: HTMLDivElement | null) => {
@@ -330,12 +343,12 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       try {
         let items: FeedItem[];
         
-        if (useDatabase && category) {
-          // Fetch all posts from database (no album filtering)
-          const posts = await fetchAllPostsFromDatabase(category);
+        if (useDatabase) {
+          // Fetch posts from database (optionally filtered by category)
+          const posts = await fetchPostsFromDatabase({ category, limit: fetchLimit });
           // Convert posts to feed items
           items = await convertPostsToFeedItems(posts);
-          console.log('✅ All feed items loaded from database:', items.length, 'items');
+          console.log('✅ Feed items loaded from database:', items.length, 'items');
         } else {
           // Use static images - fetch all (no album filtering)
           items = await generateFeedItems(directory, 'all');
@@ -353,7 +366,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     };
     
     loadAllFeedItems();
-  }, [directory, category ?? '', useDatabase ?? false]); // Only refetch when category/directory changes
+  }, [directory, category ?? '', useDatabase ?? false, fetchLimit]); // Refetch when inputs change
   
   // Filter feed items locally based on activeAlbum
   useEffect(() => {
@@ -412,6 +425,17 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   });
 
   const handleImageClick = (item: FeedItem) => {
+    const detailHref = item.slug && item.category && item.album
+      ? `/${encodeURIComponent(item.category)}/${encodeURIComponent(item.album)}/${encodeURIComponent(item.slug)}`
+      : null;
+
+    if (detailHref && typeof window !== 'undefined') {
+      if (!previousUrlRef.current) {
+        previousUrlRef.current = window.location.pathname + window.location.search;
+      }
+      window.history.pushState({ modal: true }, '', detailHref);
+    }
+
     setSelectedImage(item);
     setIsModalOpen(true);
   };
@@ -419,6 +443,11 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedImage(null);
+
+    if (typeof window !== 'undefined' && previousUrlRef.current) {
+      window.history.replaceState(null, '', previousUrlRef.current);
+      previousUrlRef.current = null;
+    }
   };
   
   const handleDeletePost = async (postId: string) => {
@@ -438,6 +467,21 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       throw err; // Re-throw so ImageModal can handle it
     }
   };
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.modal && isModalOpen) {
+        setIsModalOpen(false);
+        setSelectedImage(null);
+        previousUrlRef.current = null;
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+    }
+  }, [isModalOpen]);
 
   if (isLoading) {
     return <FeedSkeleton count={20} />;
@@ -479,18 +523,6 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
                     );
                   })}
         </div>
-
-        {/* Load More Button */}
-        <motion.div
-          className="text-center mt-12"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-        >
-          <button className="px-8 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors duration-200">
-            Load More
-          </button>
-        </motion.div>
       </div>
       
       {/* Image Modal */}
@@ -504,7 +536,12 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           date={selectedImage.date}
           tags={selectedImage.tags}
           postId={selectedImage.postId}
-          onDelete={useDatabase && category ? handleDeletePost : undefined}
+          contentUrl={selectedImage.contentUrl}
+          isAudio={selectedImage.isAudio}
+          slug={selectedImage.slug}
+          album={selectedImage.album}
+          category={selectedImage.category}
+          onDelete={useDatabase ? handleDeletePost : undefined}
         />
       )}
     </div>

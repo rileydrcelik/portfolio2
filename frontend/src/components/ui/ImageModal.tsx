@@ -1,8 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -14,14 +18,61 @@ interface ImageModalProps {
   tags?: string[];
   postId?: string;
   onDelete?: (postId: string) => void;
+  contentUrl?: string;
+  isAudio?: boolean;
+  slug?: string;
+  category?: string;
+  album?: string;
 }
 
-export default function ImageModal({ isOpen, onClose, image, title, description, date, tags, postId, onDelete }: ImageModalProps) {
+export default function ImageModal({
+  isOpen,
+  onClose,
+  image,
+  title,
+  description,
+  date,
+  tags,
+  postId,
+  onDelete,
+  contentUrl,
+  isAudio,
+  slug,
+  category,
+  album,
+}: ImageModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const previousScrollRef = useRef(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      previousScrollRef.current = window.scrollY;
+      const bodyStyle = document.body.style;
+      const htmlStyle = document.documentElement.style;
+      const originalBodyOverflow = bodyStyle.overflow;
+      const originalHtmlOverflow = htmlStyle.overflow;
+      htmlStyle.overflow = 'hidden';
+      bodyStyle.overflow = 'hidden';
+      return () => {
+        htmlStyle.overflow = originalHtmlOverflow;
+        bodyStyle.overflow = originalBodyOverflow;
+        window.scrollTo({ top: previousScrollRef.current, behavior: 'auto' });
+      };
+    }
+  }, [isOpen]);
   
   const handleImageClick = () => {
+    if (isAudio || (contentUrl && category === 'projects')) {
+      return;
+    }
     setIsFullscreen(true);
   };
   
@@ -50,8 +101,43 @@ export default function ImageModal({ isOpen, onClose, image, title, description,
   const handleDeleteCancel = () => {
     setShowDeleteConfirm(false);
   };
-  
-  return (
+
+  const isProject = category === 'projects';
+
+  const articleContent = useMemo(() => {
+    if (!isProject || !contentUrl) return '';
+    const isMarkdown = contentUrl.includes('\n') || contentUrl.includes('#') || contentUrl.includes('*') || contentUrl.length > 200;
+    return isMarkdown ? contentUrl : '';
+  }, [isProject, contentUrl]);
+
+  const normalizeLink = (href?: string) => {
+    if (!href) return '#';
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(href)) {
+      return href;
+    }
+    return `https://${href.replace(/^\/+/,'')}`;
+  };
+
+  const markdownComponents = useMemo(() => ({
+    a: ({ node, href, children, ...props }: any) => {
+      const finalHref = normalizeLink(href);
+      return (
+        <a
+          href={finalHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-white/60 hover:text-white"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+  }), []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -98,28 +184,25 @@ export default function ImageModal({ isOpen, onClose, image, title, description,
               </div>
               
               {/* Content */}
-              <div className="flex flex-col lg:flex-row max-h-[calc(90vh-80px)]">
-                {/* Image Section */}
-                <div className="lg:w-1/2 p-6">
-                  <div className="relative cursor-pointer" onClick={handleImageClick}>
-                    <img
-                      src={image}
-                      alt={title}
-                      className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102"
-                    />
-                  </div>
-                </div>
-                
-                {/* Text Section */}
-                <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20 overflow-y-auto">
+              {isProject ? (
+                <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t border-white/20 lg:border-t-0">
                   <div className="space-y-6">
-                    {/* Description */}
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
                       <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{description}</p>
                     </div>
-                    
-                    {/* Tags */}
+
+                    {articleContent && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-white">Project Article</h3>
+                        <div className="prose prose-invert prose-headings:font-serif prose-p:text-white/80">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                            {articleContent}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+
                     {tags && tags.length > 0 && (
                       <div>
                         <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
@@ -135,8 +218,7 @@ export default function ImageModal({ isOpen, onClose, image, title, description,
                         </div>
                       </div>
                     )}
-                    
-                    {/* Technical Details */}
+
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
                       <div className="space-y-2 text-white/80">
@@ -154,7 +236,70 @@ export default function ImageModal({ isOpen, onClose, image, title, description,
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col lg:flex-row max-h-[calc(90vh-80px)]">
+                  <div className="lg:w-1/2 p-6 space-y-4">
+                    <div className="relative cursor-pointer" onClick={handleImageClick}>
+                      <img
+                        src={image}
+                        alt={title}
+                        className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102"
+                      />
+                    </div>
+                    {isAudio && contentUrl && (
+                      <audio
+                        controls
+                        autoPlay
+                        src={contentUrl}
+                        className="w-full"
+                      >
+                        Your browser does not support the audio element.
+                      </audio>
+                    )}
+                  </div>
+
+                  <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20 overflow-y-auto">
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
+                        <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{description}</p>
+                      </div>
+
+                      {tags && tags.length > 0 && (
+                        <div>
+                          <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="inline-flex items-center px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
+                        <div className="space-y-2 text-white/80">
+                          {date && (
+                            <p>
+                              <span className="font-medium">Created:</span>{' '}
+                              {new Date(date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Delete Confirmation Dialog */}
               {showDeleteConfirm && (
@@ -188,7 +333,7 @@ export default function ImageModal({ isOpen, onClose, image, title, description,
           
           {/* Fullscreen Image Overlay */}
           <AnimatePresence>
-            {isFullscreen && (
+            {isFullscreen && !isProject && !isAudio && (
               <motion.div
                 className="fixed inset-0 bg-black z-[60] flex items-center justify-center p-4"
                 initial={{ opacity: 0 }}
@@ -206,7 +351,7 @@ export default function ImageModal({ isOpen, onClose, image, title, description,
                   onClick={(e) => e.stopPropagation()}
                 >
                   <img
-                    src={image}
+                    src={contentUrl || image}
                     alt={title}
                     className="max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] object-contain rounded-xl"
                   />
@@ -225,6 +370,7 @@ export default function ImageModal({ isOpen, onClose, image, title, description,
           </AnimatePresence>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

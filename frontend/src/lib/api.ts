@@ -4,14 +4,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface Post {
   id: string;
+  slug: string;
   category: string;
   album: string;
   title: string;
   description: string;
   content_url: string;
   thumbnail_url: string;
+  splash_image_url?: string | null;
   date: string;
   tags: string[];
+  is_major: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -23,8 +26,12 @@ export interface PostCreate {
   description: string;
   content_url: string;
   thumbnail_url: string;
+  splash_image_url?: string | null;
   date: string;
   tags?: string[];
+  is_major?: boolean;
+  slug?: string | null;
+  article_content?: string | null;
 }
 
 export async function getPosts(params?: {
@@ -32,12 +39,14 @@ export async function getPosts(params?: {
   album?: string;
   limit?: number;
   offset?: number;
+  is_major?: boolean;
 }): Promise<Post[]> {
   const queryParams = new URLSearchParams();
   if (params?.category) queryParams.append('category', params.category);
   if (params?.album) queryParams.append('album', params.album);
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (typeof params?.is_major === 'boolean') queryParams.append('is_major', params.is_major ? 'true' : 'false');
 
   const response = await fetch(`${API_URL}/api/posts?${queryParams.toString()}`);
   if (!response.ok) {
@@ -48,6 +57,14 @@ export async function getPosts(params?: {
 
 export async function getPost(id: string): Promise<Post> {
   const response = await fetch(`${API_URL}/api/posts/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch post');
+  }
+  return response.json();
+}
+
+export async function getPostBySlug(slug: string): Promise<Post> {
+  const response = await fetch(`${API_URL}/api/posts/slug/${slug}`);
   if (!response.ok) {
     throw new Error('Failed to fetch post');
   }
@@ -161,16 +178,20 @@ export interface UploadResponse {
   content_type: string;
 }
 
-export async function uploadImage(file: File): Promise<UploadResponse> {
-  console.log('[API] uploadImage called with:', { filename: file.name, size: file.size, type: file.type });
-  console.log('[API] Upload URL:', `${API_URL}/api/upload/image`);
+export async function uploadImage(file: File, folder?: string): Promise<UploadResponse> {
+  console.log('[API] uploadImage called with:', { filename: file.name, size: file.size, type: file.type, folder });
+  const uploadUrl = new URL(`${API_URL}/api/upload/image`);
+  if (folder) {
+    uploadUrl.searchParams.set('folder', folder);
+  }
+  console.log('[API] Upload URL:', uploadUrl.toString());
   
   const formData = new FormData();
   formData.append('file', file);
   
   try {
     console.log('[API] Making upload request...');
-    const response = await fetch(`${API_URL}/api/upload/image`, {
+    const response = await fetch(uploadUrl.toString(), {
       method: 'POST',
       body: formData,
     });
@@ -183,15 +204,28 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
     
     if (!response.ok) {
       let errorData;
+      let errorText = '';
       try {
-        errorData = await response.json();
-        console.error('[API] Upload error response:', errorData);
+        errorText = await response.text();
+        console.error('[API] Upload error response text:', errorText);
+        if (errorText) {
+          try {
+            errorData = JSON.parse(errorText);
+            console.error('[API] Upload error response parsed:', errorData);
+          } catch (parseErr) {
+            // Not JSON, use as plain text
+            errorData = { detail: errorText };
+          }
+        } else {
+          errorData = { detail: 'Empty response from server' };
+        }
       } catch (e) {
-        const text = await response.text();
-        console.error('[API] Upload error text:', text);
-        errorData = { detail: text || 'Failed to upload image' };
+        console.error('[API] Error reading error response:', e);
+        errorData = { detail: errorText || `HTTP ${response.status}: ${response.statusText}` };
       }
-      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+      const errorMessage = errorData?.detail || errorData?.message || `HTTP ${response.status}: ${response.statusText}`;
+      console.error('[API] Upload failed with error:', errorMessage);
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();
@@ -201,4 +235,59 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
     console.error('[API] Upload fetch error:', err);
     throw err;
   }
+}
+
+export interface Album {
+  id: string;
+  subject_id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  cover_image?: string;
+  order: string;
+  is_active: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAlbumRequest {
+  category: string;
+  name: string;
+  description?: string;
+}
+
+export async function getAlbumsByCategory(category: string): Promise<string[]> {
+  try {
+    const response = await fetch(`${API_URL}/api/posts/albums/${category}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[API] Failed to fetch albums:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`Failed to fetch albums: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data.albums || [];
+  } catch (err) {
+    console.error('[API] Error fetching albums:', err);
+    // Return empty array on error instead of throwing
+    return [];
+  }
+}
+
+export async function createAlbum(album: CreateAlbumRequest): Promise<Album> {
+  const response = await fetch(`${API_URL}/api/albums/create-by-category`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(album),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to create album');
+  }
+  return response.json();
 }

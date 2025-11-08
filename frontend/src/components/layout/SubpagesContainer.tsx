@@ -23,11 +23,11 @@ interface NavigationItem {
 }
 
 const subpages: NavigationItem[] = [
-  { id: 'art', name: 'Art', icon: PaintBrushIcon, href: '/artwork' },
-  { id: 'photography', name: 'Photography', icon: CameraIcon, href: '/photography' },
+  { id: 'art', name: 'Art', icon: PaintBrushIcon, href: '/art' },
+  { id: 'photo', name: 'Photography', icon: CameraIcon, href: '/photo' },
   { id: 'music', name: 'Music', icon: MusicalNoteIcon, href: '/music' },
   { id: 'projects', name: 'Projects', icon: CodeBracketIcon, href: '/projects' },
-  { id: 'apparel', name: 'Shop', icon: ShoppingBagIcon, href: '/shop' },
+  { id: 'apparel', name: 'Apparel', icon: ShoppingBagIcon, href: '/apparel' },
 ];
 
 interface NavigationLinkProps {

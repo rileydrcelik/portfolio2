@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
 import { Filter } from 'lucide-react';
+import Link from 'next/link';
 
 interface Album {
   id: string;
@@ -20,6 +21,7 @@ interface SectionHeaderProps {
   tags?: string[];
   activeTag?: string;
   onTagChange?: (tag: string) => void;
+  categorySlug?: string;
 }
 
 export default function SectionHeader({ 
@@ -30,10 +32,20 @@ export default function SectionHeader({
   onAlbumChange,
   tags = [],
   activeTag = '',
-  onTagChange
+  onTagChange,
+  categorySlug,
 }: SectionHeaderProps) {
   // Get the active album info
   const activeAlbumInfo = albums.find(album => album.id === activeAlbum);
+  const formatName = (value?: string | null) => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'undefined') return '';
+    if (trimmed === 'all') return 'all';
+    return trimmed.replace(/[-_]/g, ' ');
+  };
+  const formattedAlbumName = formatName(activeAlbumInfo?.name || activeAlbumInfo?.id || activeAlbum);
+  const formattedAlbumCount = activeAlbumInfo?.count ?? 0;
 
   return (
     <div className="pl-4 pr-4 py-8 bg-black">
@@ -51,11 +63,11 @@ export default function SectionHeader({
                 exit={{ opacity: 0, x: 10 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
               >
-                {activeAlbum === 'all' ? (
-                  ` - ${totalCount} posts`
-                ) : (
-                  ` - ${activeAlbumInfo?.name} - ${activeAlbumInfo?.count} posts`
-                )}
+                {activeAlbum === 'all'
+                  ? ` - ${totalCount} posts`
+                  : formattedAlbumName
+                    ? ` - ${formattedAlbumName} - ${formattedAlbumCount} posts`
+                    : ` - ${formattedAlbumCount} posts`}
               </motion.span>
             </AnimatePresence>
           </h1>
@@ -135,25 +147,54 @@ export default function SectionHeader({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <button
-            onClick={() => onAlbumChange('all')}
-            className={`text-white hover:text-gray-300 transition-colors pb-1 ${
-              activeAlbum === 'all' ? 'border-b-2 border-white' : ''
-            }`}
-          >
-            all
-          </button>
-          {albums.map((album) => (
-            <button
-              key={album.id}
-              onClick={() => onAlbumChange(album.id)}
+          {categorySlug ? (
+            <Link
+              href={`/${categorySlug}`}
+              onClick={(e) => {
+                onAlbumChange('all');
+              }}
               className={`text-white hover:text-gray-300 transition-colors pb-1 ${
-                activeAlbum === album.id ? 'border-b-2 border-white' : ''
+                activeAlbum === 'all' ? 'border-b-2 border-white' : ''
               }`}
             >
-              {album.name}
+              all
+            </Link>
+          ) : (
+            <button
+              onClick={() => onAlbumChange('all')}
+              className={`text-white hover:text-gray-300 transition-colors pb-1 ${
+                activeAlbum === 'all' ? 'border-b-2 border-white' : ''
+              }`}
+            >
+              all
             </button>
-          ))}
+          )}
+          {albums.map((album) => {
+            const displayName = formatName(album.name) || formatName(album.id) || album.id || '';
+            const isActive = activeAlbum === album.id;
+            const commonClass = `text-white hover:text-gray-300 transition-colors pb-1 ${
+              isActive ? 'border-b-2 border-white' : ''
+            }`;
+            const href = categorySlug ? `/${categorySlug}/${album.id}` : undefined;
+            return href ? (
+              <Link
+                key={album.id}
+                href={href}
+                onClick={() => onAlbumChange(album.id)}
+                className={commonClass}
+              >
+                {displayName}
+              </Link>
+            ) : (
+              <button
+                key={album.id}
+                onClick={() => onAlbumChange(album.id)}
+                className={commonClass}
+              >
+                {displayName}
+              </button>
+            );
+          })}
         </motion.div>
       </div>
     </div>

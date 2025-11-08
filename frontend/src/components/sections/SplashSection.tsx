@@ -1,17 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDownIcon, HomeIcon, UserIcon, PaintBrushIcon, CameraIcon, MusicalNoteIcon, CodeBracketIcon, ShoppingBagIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tooltip } from '@chakra-ui/react';
 import GlassTooltipLabel from '@/components/ui/GlassTooltipLabel';
+import { getPosts, Post } from '@/lib/api';
 
 export default function SplashSection() {
   const [scrollY, setScrollY] = useState(0);
   const [windowHeight, setWindowHeight] = useState(0);
   const [titleVisible, setTitleVisible] = useState(false);
+  const [featuredPost, setFeaturedPost] = useState<Post | null>(null);
+  const [isLoadingPost, setIsLoadingPost] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   useEffect(() => {
     setWindowHeight(window.innerHeight);
@@ -36,6 +40,63 @@ export default function SplashSection() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        setIsLoadingPost(true);
+        const posts = await getPosts({ is_major: true, limit: 1 });
+        if (posts.length > 0) {
+          setFeaturedPost(posts[0]);
+        } else {
+          setFeaturedPost(null);
+        }
+      } catch (error) {
+        console.error('[SplashSection] Failed to fetch featured post:', error);
+        setFeaturedPost(null);
+      } finally {
+        setIsLoadingPost(false);
+      }
+    };
+
+    fetchFeatured();
+  }, []);
+
+  const featuredImageUrl = useMemo(() => {
+    if (!featuredPost) return null;
+    const content = featuredPost.content_url?.trim() ?? '';
+    const thumb = featuredPost.thumbnail_url?.trim() ?? '';
+    const splash = featuredPost.splash_image_url?.trim() ?? '';
+
+    const looksLikeMarkdown = content.includes('\n') || content.includes('#') || content.includes('![');
+    const isValidUrl = (value: string) => {
+      if (!value) return false;
+      try {
+        const parsed = new URL(value);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      } catch (err) {
+        return false;
+      }
+    };
+
+    if (isValidUrl(splash)) {
+      return splash;
+    }
+
+    if (!looksLikeMarkdown && isValidUrl(content)) {
+      return content;
+    }
+
+    if (isValidUrl(thumb)) {
+      return thumb;
+    }
+
+    return null;
+  }, [featuredPost]);
+
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [featuredImageUrl]);
 
   // Smooth fade out starting from 50% scroll through the splash
   const fadeStart = windowHeight * 0.5; // Start fading at 50% through viewport
@@ -110,7 +171,7 @@ export default function SplashSection() {
               p={0}
               label={<GlassTooltipLabel text="Art" />}
             >
-              <Link href="/artwork"><PaintBrushIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+              <Link href="/art"><PaintBrushIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
             </Tooltip>
             <Tooltip
               placement="right"
@@ -120,7 +181,7 @@ export default function SplashSection() {
               p={0}
               label={<GlassTooltipLabel text="Photography" />}
             >
-              <Link href="/photography"><CameraIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+              <Link href="/photo"><CameraIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
             </Tooltip>
           </div>
         </motion.div>
@@ -207,15 +268,26 @@ export default function SplashSection() {
           willChange: 'opacity'
         }}
       >
-        <Image
-          src="/splash.jpg"
-          alt="Splash"
-          fill
-          className="object-cover pointer-events-none select-none"
-          priority
-          quality={90}
-          draggable={false}
-        />
+        <div className="absolute inset-0 bg-black" />
+        {featuredImageUrl && (
+          <motion.div
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: imageLoaded ? 1 : 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          >
+            <Image
+              src={featuredImageUrl}
+              alt={featuredPost.title || 'Splash'}
+              fill
+              className="object-cover pointer-events-none select-none"
+              priority
+              quality={90}
+              draggable={false}
+              onLoadingComplete={() => setImageLoaded(true)}
+            />
+          </motion.div>
+        )}
         
         {/* Gradient Overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
@@ -235,10 +307,10 @@ export default function SplashSection() {
           }}
         >
           <h1 className="text-6xl md:text-8xl font-serif text-white mb-4 select-none">
-            PICNIC
+            {featuredPost?.title || 'PICNIC'}
           </h1>
           <p className="text-xl md:text-2xl text-white/50 font-serif select-none">
-            short description of the project...
+            {featuredPost?.description || 'short description of the project...'}
           </p>
         </div>
       </div>

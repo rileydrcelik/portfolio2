@@ -1,10 +1,13 @@
-import Feed from '@/components/sections/Feed';
+import SectionWithFeed from '@/components/sections/SectionWithFeed';
 
 export default function ApparelPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Feed */}
-      <Feed directory="apparel_placeholders" />
-    </div>
+    <SectionWithFeed
+      title="Apparel"
+      directory="apparel_placeholders"
+      category="apparel"
+      categorySlug="apparel"
+      useDatabase={true}
+    />
   );
 }
