@@ -1,4 +1,6 @@
--- Database Schema for Portfolio/E-commerce Website
++ -- Database Schema for Portfolio/E-commerce Website
+
++ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Users table (for future social features)
 CREATE TABLE users (
@@ -102,6 +104,30 @@ CREATE TABLE order_items (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Posts table (main content feed)
+CREATE TABLE posts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    album VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    content_url TEXT NOT NULL,
+    thumbnail_url TEXT NOT NULL,
+    splash_image_url TEXT,
+    date TIMESTAMP NOT NULL,
+    tags TEXT[] NOT NULL DEFAULT '{}'::text[],
+    price NUMERIC(10,2),
+    gallery_urls TEXT[] NOT NULL DEFAULT '{}'::text[],
+    is_major BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE posts
+    ADD CONSTRAINT posts_category_check
+        CHECK (category IN ('art', 'photo', 'music', 'projects', 'bio', 'apparel'));
+
 -- Indexes for better performance
 CREATE INDEX idx_subjects_slug ON subjects(slug);
 CREATE INDEX idx_subjects_active ON subjects(is_active);
@@ -125,7 +151,8 @@ INSERT INTO subjects (name, slug, description, "order") VALUES
 ('Music', 'music', 'Musical compositions and audio content', 1),
 ('Artwork', 'artwork', 'Visual art and creative pieces', 2),
 ('Projects', 'projects', 'Development projects and technical work', 3),
-('Apparel', 'apparel', 'Clothing and merchandise', 4);
+('Apparel', 'apparel', 'Clothing and merchandise', 4)
+ON CONFLICT (slug) DO NOTHING;
 
 
 
