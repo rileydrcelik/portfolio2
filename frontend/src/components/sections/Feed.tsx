@@ -47,6 +47,9 @@ interface FeedItem {
   isText?: boolean;
   price?: number | null;
   galleryUrls?: string[];
+  thumbnailUrl?: string | null;
+  splashUrl?: string | null;
+  rawPost?: Post;
 }
 
 interface FeedProps {
@@ -151,6 +154,9 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       isText: Boolean(looksLikeText && !imageUrl),
       price: post.price ?? null,
       galleryUrls: post.gallery_urls || [],
+      thumbnailUrl: post.thumbnail_url ?? null,
+      splashUrl: post.splash_image_url ?? null,
+      rawPost: post,
     });
   }
   
@@ -562,6 +568,16 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           galleryUrls={selectedImage.galleryUrls}
           onDelete={useDatabase && authToken ? handleDeletePost : undefined}
           canEdit={Boolean(authToken && user)}
+          post={
+            selectedImage.rawPost
+              ? {
+                  content_url: selectedImage.rawPost.content_url,
+                  thumbnail_url: selectedImage.rawPost.thumbnail_url,
+                  splash_image_url: selectedImage.rawPost.splash_image_url,
+                  gallery_urls: selectedImage.rawPost.gallery_urls ?? [],
+                }
+              : undefined
+          }
         />
       )}
     </div>

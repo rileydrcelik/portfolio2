@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type { Post } from '@/lib/api';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ interface ImageModalProps {
   price?: number | null;
   galleryUrls?: string[];
   canEdit?: boolean;
+  post?: Pick<Post, 'content_url' | 'thumbnail_url' | 'splash_image_url' | 'gallery_urls'>;
 }
 
 export default function ImageModal({
@@ -47,6 +49,7 @@ export default function ImageModal({
   price,
   galleryUrls,
   canEdit = false,
+  post,
 }: ImageModalProps) {
   const image = rawImage ?? '';
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -56,15 +59,28 @@ export default function ImageModal({
   const [mounted, setMounted] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const galleryImages = useMemo(() => {
-    if (galleryUrls && galleryUrls.length > 0) {
-      return galleryUrls;
+  const normalizeCandidates = (...values: Array<string | null | undefined>) => {
+    const unique = new Set<string>();
+    for (const value of values) {
+      const trimmed = typeof value === 'string' ? value.trim() : '';
+      if (trimmed) {
+        unique.add(trimmed);
+      }
     }
-    if (image) {
-      return [image];
-    }
-    return [] as string[];
-  }, [galleryUrls, image]);
+    return Array.from(unique);
+  };
+
+  const mergedGallerySources = useMemo(() => {
+    const candidates = [
+      ...(galleryUrls ?? []),
+      ...(post?.gallery_urls ?? []),
+      image,
+    ];
+    return normalizeCandidates(...candidates);
+  }, [galleryUrls, post?.gallery_urls, image]);
+
+  const galleryImages =
+    mergedGallerySources.length > 0 ? mergedGallerySources : normalizeCandidates(image);
 
   const displayedImage = galleryImages[activeImageIndex] || image;
 
@@ -90,9 +106,36 @@ export default function ImageModal({
   const isBio = category === 'bio' || isText;
   const isApparel = category === 'apparel';
 
-  const fullscreenImage = isProject
-    ? contentUrl || image || undefined
-    : displayedImage || contentUrl || image || undefined;
+  const isImageUrl = (value?: string | null) => {
+    if (!value) return false;
+    const sanitized = value.split('?')[0];
+    return /\.(png|jpg|jpeg|webp|gif|bmp|svg)$/i.test(sanitized);
+  };
+
+  const fullscreenImage = useMemo(() => {
+    const candidates = normalizeCandidates(
+      mergedGallerySources[activeImageIndex],
+      post?.gallery_urls?.[activeImageIndex],
+      post?.splash_image_url,
+      post?.content_url,
+      contentUrl,
+      rawImage,
+      post?.thumbnail_url,
+      image
+    );
+
+    return candidates.find(isImageUrl);
+  }, [
+    mergedGallerySources,
+    activeImageIndex,
+    post?.gallery_urls,
+    post?.splash_image_url,
+    post?.content_url,
+    contentUrl,
+    rawImage,
+    post?.thumbnail_url,
+    image
+  ]);
 
   const articleContent = useMemo(() => {
     if (!(isProject || isBio) || !contentUrl) return '';
@@ -150,7 +193,7 @@ export default function ImageModal({
     if (isAudio || (contentUrl && (category === 'projects' || category === 'bio')) || isText) {
       return;
     }
-    if (!displayedImage) return;
+    if (!fullscreenImage) return;
     setIsFullscreen(true);
   };
   
