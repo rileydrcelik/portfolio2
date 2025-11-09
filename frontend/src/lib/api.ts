@@ -28,7 +28,8 @@ const resolveHost = (): string => {
 
 const buildUrl = (host: string): string => {
   if (typeof window !== 'undefined') {
-    return `//${host}`;
+    const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
+    return `${protocol}${host}`;
   }
   return `https://${host}`;
 };
