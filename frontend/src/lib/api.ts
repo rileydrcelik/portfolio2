@@ -15,22 +15,33 @@ const normalizeHost = (value: string): string => {
 };
 
 const resolveHost = (): string => {
+  // Vercel production → always use Railway host
   if (process.env.VERCEL_ENV === 'production') {
     return PRODUCTION_API_HOST;
   }
 
+  // Browser on your real domain → use Railway host
   if (typeof window !== 'undefined' && PRODUCTION_HOSTS.has(window.location.hostname)) {
     return PRODUCTION_API_HOST;
   }
 
+  // Otherwise (local dev, preview, etc.) use env or localhost
   return normalizeHost(rawApiValue);
 };
 
 const buildUrl = (host: string): string => {
+  // If we're talking to the real prod API, force https
+  if (host === PRODUCTION_API_HOST) {
+    return `https://${host}`;
+  }
+
+  // In the browser, mirror current protocol only for non-prod hosts
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol === 'https:' ? 'https://' : 'http://';
     return `${protocol}${host}`;
   }
+
+  // On server, default to https
   return `https://${host}`;
 };
 
@@ -271,7 +282,6 @@ export async function uploadImage(file: File, folder?: string, authToken?: strin
             errorData = JSON.parse(errorText);
             console.error('[API] Upload error response parsed:', errorData);
           } catch (parseErr) {
-            // Not JSON, use as plain text
             errorData = { detail: errorText };
           }
         } else {
@@ -330,7 +340,6 @@ export async function getAlbumsByCategory(category: string): Promise<string[]> {
     return data.albums || [];
   } catch (err) {
     console.error('[API] Error fetching albums:', err);
-    // Return empty array on error instead of throwing
     return [];
   }
 }
