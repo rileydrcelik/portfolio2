@@ -52,7 +52,7 @@ export default function PostModalClient({ post, fallbackHref }: PostModalClientP
         album={post.album}
         isText={Boolean(looksLikeText && !imageCandidate)}
         price={post.price ?? null}
-        galleryUrls={post.gallery_urls}
+        galleryUrls={post.gallery_urls ?? undefined}
       />
     </div>
   );
