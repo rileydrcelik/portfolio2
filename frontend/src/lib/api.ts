@@ -1,9 +1,26 @@
 // API Client for backend communication
 
-const API_URL =
+const rawApiUrl =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   'http://localhost:8000';
+
+const API_URL = (() => {
+  let url = rawApiUrl.replace(/\/+$/, '');
+
+  if (url.startsWith('http://') && !url.startsWith('http://localhost')) {
+    url = `https://${url.slice('http://'.length)}`;
+  }
+
+  if (typeof window !== 'undefined') {
+    const isHttpsPage = window.location.protocol === 'https:';
+    if (isHttpsPage && url.startsWith('http://')) {
+      url = `https://${url.slice('http://'.length)}`;
+    }
+  }
+
+  return url;
+})();
 
 export interface Post {
   id: string;
