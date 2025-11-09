@@ -35,11 +35,7 @@ export default function CreatePost() {
               onClick={() => setIsModalOpen(true)}
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ 
-                default: { duration: 0.3, delay: 0.2 },
-                hover: { duration: 0.1, ease: "easeOut" },
-                tap: { duration: 0.08, ease: "easeOut" }
-              }}
+              transition={{ duration: 0.3, delay: 0.2 }}
             >
               <PlusIcon className="w-6 h-6" />
             </motion.button>
