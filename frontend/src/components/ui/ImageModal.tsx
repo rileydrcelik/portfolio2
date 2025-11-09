@@ -31,7 +31,7 @@ interface ImageModalProps {
 export default function ImageModal({
   isOpen,
   onClose,
-  image = '',
+  image: rawImage = '',
   title,
   description,
   date,
@@ -48,6 +48,7 @@ export default function ImageModal({
   galleryUrls,
   canEdit = false,
 }: ImageModalProps) {
+  const image = rawImage ?? '';
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -89,7 +90,9 @@ export default function ImageModal({
   const isBio = category === 'bio' || isText;
   const isApparel = category === 'apparel';
 
-  const fullscreenImage = isProject ? (contentUrl || image) : (displayedImage || contentUrl || image);
+  const fullscreenImage = isProject
+    ? contentUrl || image || undefined
+    : displayedImage || contentUrl || image || undefined;
 
   const articleContent = useMemo(() => {
     if (!(isProject || isBio) || !contentUrl) return '';
@@ -414,7 +417,7 @@ export default function ImageModal({
           
           {/* Fullscreen Image Overlay */}
           <AnimatePresence>
-            {isFullscreen && !isProject && !isAudio && (
+            {isFullscreen && !isProject && !isAudio && fullscreenImage && (
               <motion.div
                 className="fixed inset-0 bg-black z-[60] flex items-center justify-center p-4"
                 initial={{ opacity: 0 }}
