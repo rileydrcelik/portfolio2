@@ -46,6 +46,10 @@ const buildUrl = (host: string): string => {
 };
 
 const API_URL = buildUrl(resolveHost());
+const POSTS_ENDPOINT = `${API_URL}/api/posts/`;
+const ALBUMS_ENDPOINT = `${API_URL}/api/posts/albums/`;
+const UPLOAD_IMAGE_ENDPOINT = `${API_URL}/api/upload/image`;
+const CREATE_ALBUM_ENDPOINT = `${API_URL}/api/albums/create-by-category`;
 
 export interface Post {
   id: string;
@@ -97,7 +101,7 @@ export async function getPosts(params?: {
   if (params?.offset) queryParams.append('offset', params.offset.toString());
   if (typeof params?.is_major === 'boolean') queryParams.append('is_major', params.is_major ? 'true' : 'false');
 
-  const response = await fetch(`${API_URL}/api/posts?${queryParams.toString()}`);
+  const response = await fetch(`${POSTS_ENDPOINT}?${queryParams.toString()}`);
   if (!response.ok) {
     throw new Error('Failed to fetch posts');
   }
@@ -105,7 +109,7 @@ export async function getPosts(params?: {
 }
 
 export async function getPost(id: string): Promise<Post> {
-  const response = await fetch(`${API_URL}/api/posts/${id}`);
+  const response = await fetch(`${POSTS_ENDPOINT}${id}`);
   if (!response.ok) {
     throw new Error('Failed to fetch post');
   }
@@ -113,7 +117,7 @@ export async function getPost(id: string): Promise<Post> {
 }
 
 export async function getPostBySlug(slug: string): Promise<Post> {
-  const response = await fetch(`${API_URL}/api/posts/slug/${slug}`);
+  const response = await fetch(`${POSTS_ENDPOINT}slug/${slug}`);
   if (!response.ok) {
     throw new Error('Failed to fetch post');
   }
@@ -123,11 +127,11 @@ export async function getPostBySlug(slug: string): Promise<Post> {
 export async function createPost(post: PostCreate, authToken?: string): Promise<Post> {
   console.log('[API] createPost called with:', post);
   console.log('[API] API_URL:', API_URL);
-  console.log('[API] Full URL:', `${API_URL}/api/posts`);
+  console.log('[API] Posts endpoint:', POSTS_ENDPOINT);
   
   try {
     console.log('[API] Making fetch request...');
-    const response = await fetch(`${API_URL}/api/posts`, {
+    const response = await fetch(POSTS_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -169,7 +173,7 @@ export async function createPost(post: PostCreate, authToken?: string): Promise<
 }
 
 export async function updatePost(id: string, post: Partial<PostCreate>, authToken?: string): Promise<Post> {
-  const response = await fetch(`${API_URL}/api/posts/${id}`, {
+  const response = await fetch(`${POSTS_ENDPOINT}${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -186,10 +190,10 @@ export async function updatePost(id: string, post: Partial<PostCreate>, authToke
 
 export async function deletePost(id: string, authToken?: string): Promise<void> {
   console.log('[API] deletePost called with id:', id);
-  console.log('[API] Delete URL:', `${API_URL}/api/posts/${id}`);
+  console.log('[API] Delete URL:', `${POSTS_ENDPOINT}${id}`);
   
   try {
-    const response = await fetch(`${API_URL}/api/posts/${id}`, {
+    const response = await fetch(`${POSTS_ENDPOINT}${id}`, {
       method: 'DELETE',
       headers: {
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -246,7 +250,7 @@ export interface UploadResponse {
 
 export async function uploadImage(file: File, folder?: string, authToken?: string): Promise<UploadResponse> {
   console.log('[API] uploadImage called with:', { filename: file.name, size: file.size, type: file.type, folder });
-  const uploadUrl = new URL(`${API_URL}/api/upload/image`);
+  const uploadUrl = new URL(UPLOAD_IMAGE_ENDPOINT);
   if (folder) {
     uploadUrl.searchParams.set('folder', folder);
   }
@@ -326,7 +330,7 @@ export interface CreateAlbumRequest {
 
 export async function getAlbumsByCategory(category: string): Promise<string[]> {
   try {
-    const response = await fetch(`${API_URL}/api/posts/albums/${category}`);
+    const response = await fetch(`${ALBUMS_ENDPOINT}${category}`);
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[API] Failed to fetch albums:', {
@@ -345,7 +349,7 @@ export async function getAlbumsByCategory(category: string): Promise<string[]> {
 }
 
 export async function createAlbum(album: CreateAlbumRequest, authToken?: string): Promise<Album> {
-  const response = await fetch(`${API_URL}/api/albums/create-by-category`, {
+  const response = await fetch(CREATE_ALBUM_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
