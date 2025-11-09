@@ -12,11 +12,7 @@ export default function Webring() {
         whileTap={{ scale: 0.95 }}
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ 
-          default: { duration: 0.3, delay: 0.1 },
-          hover: { duration: 0.08, ease: "easeOut" },
-          tap: { duration: 0.06, ease: "easeOut" }
-        }}
+        transition={{ duration: 0.3, delay: 0.1 }}
       >
         <div className="w-16 h-16 border-2 border-white rounded-full flex items-center justify-center">
           <div className="w-8 h-8 bg-white rounded-full"></div>
