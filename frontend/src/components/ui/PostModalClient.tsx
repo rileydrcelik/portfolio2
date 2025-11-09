@@ -25,8 +25,11 @@ interface PostModalClientProps {
 export default function PostModalClient({ post, fallbackHref }: PostModalClientProps) {
   const router = useRouter();
   const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(post.content_url);
-  const looksLikeText = post.category === 'bio' || (post.content_url && !/^https?:\/\//i.test(post.content_url));
-  const imageCandidate = post.thumbnail_url || post.splash_image_url || (looksLikeText ? '' : post.content_url);
+  const looksLikeText =
+    post.category === 'bio' ||
+    (!!post.content_url && !/^https?:\/\//i.test(post.content_url));
+  const imageCandidate =
+    post.thumbnail_url || post.splash_image_url || (looksLikeText ? null : post.content_url);
 
   const handleClose = () => {
     router.push(fallbackHref);
@@ -47,7 +50,7 @@ export default function PostModalClient({ post, fallbackHref }: PostModalClientP
         slug={post.slug}
         category={post.category}
         album={post.album}
-        isText={looksLikeText && !imageCandidate}
+        isText={Boolean(looksLikeText && !imageCandidate)}
         price={post.price ?? null}
         galleryUrls={post.gallery_urls}
       />
