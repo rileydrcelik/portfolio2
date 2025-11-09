@@ -1,11 +1,18 @@
 // API Client for backend communication
 
+const PRODUCTION_API_URL = 'https://portfolio2-production-0509.up.railway.app';
+const PRODUCTION_HOSTS = new Set(['www.rileydrcelik.com', 'rileydrcelik.com']);
+
 const rawApiUrl =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   'http://localhost:8000';
 
 const API_URL = (() => {
+  if (process.env.VERCEL_ENV === 'production') {
+    return PRODUCTION_API_URL;
+  }
+
   let url = rawApiUrl.replace(/\/+$/, '');
 
   if (url.startsWith('http://') && !url.startsWith('http://localhost')) {
@@ -14,8 +21,12 @@ const API_URL = (() => {
 
   if (typeof window !== 'undefined') {
     const isHttpsPage = window.location.protocol === 'https:';
+    if (PRODUCTION_HOSTS.has(window.location.hostname)) {
+      return PRODUCTION_API_URL;
+    }
+
     if (isHttpsPage && url.startsWith('http://')) {
-      url = `https://${url.slice('http://'.length)}`;
+      return `https://${url.slice('http://'.length)}`;
     }
   }
 
