@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import Optional
 from app.lib.s3 import upload_file_to_s3, delete_file_from_s3
+from app.lib.firebase_auth import verify_firebase_token
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -8,7 +9,8 @@ router = APIRouter(prefix="/api/upload", tags=["upload"])
 async def upload_image(
     file: UploadFile = File(...),
     bucket: Optional[str] = None,
-    folder: Optional[str] = None
+    folder: Optional[str] = None,
+    current_user=Depends(verify_firebase_token)
 ):
     """
     Upload an image file to S3 and return the public URL.

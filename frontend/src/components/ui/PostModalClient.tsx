@@ -16,6 +16,8 @@ interface PostModalClientProps {
     slug: string;
     category: string;
     album: string;
+    price?: number | null;
+    gallery_urls?: string[] | null;
   };
   fallbackHref: string;
 }
@@ -46,6 +48,8 @@ export default function PostModalClient({ post, fallbackHref }: PostModalClientP
         category={post.category}
         album={post.album}
         isText={looksLikeText && !imageCandidate}
+        price={post.price ?? null}
+        galleryUrls={post.gallery_urls}
       />
     </div>
   );

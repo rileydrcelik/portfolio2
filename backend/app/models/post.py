@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime, func, Boolean
+from sqlalchemy import Column, String, Text, DateTime, func, Boolean, Numeric
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 import uuid
 from app.database import Base
@@ -16,6 +16,8 @@ class Post(Base):
     splash_image_url = Column(Text, nullable=True)
     date = Column(DateTime, nullable=False)
     tags = Column(ARRAY(Text), nullable=False, default=[])
+    price = Column(Numeric(10, 2), nullable=True)
+    gallery_urls = Column(ARRAY(Text), nullable=False, default=list)
     is_major = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

@@ -24,7 +24,6 @@ interface NavigationItem {
 }
 
 const subpages: NavigationItem[] = [
-  { id: 'bio', name: 'Bio', icon: UserIcon, href: '/bio' },
   { id: 'art', name: 'Art', icon: PaintBrushIcon, href: '/art' },
   { id: 'photography', name: 'Photography', icon: CameraIcon, href: '/photo' },
   { id: 'music', name: 'Music', icon: MusicalNoteIcon, href: '/music' },

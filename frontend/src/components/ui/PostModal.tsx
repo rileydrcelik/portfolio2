@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Plus } from 'lucide-react';
-import { createPost, uploadImage, getAlbumsByCategory, createAlbum } from '@/lib/api';
+import { createPost, uploadImage, getAlbumsByCategory, createAlbum, type PostCreate } from '@/lib/api';
 import MarkdownEditor from './MarkdownEditor';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface PostModalProps {
   isOpen: boolean;
@@ -148,6 +149,17 @@ const compressArticleImage = (file: File, options?: { maxWidth?: number; maxHeig
   });
 };
 
+const readFileAsDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      resolve((event.target?.result as string) || '');
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedAlbum, setSelectedAlbum] = useState<string>('');
@@ -167,10 +179,15 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [audioPreviewName, setAudioPreviewName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const isMusic = selectedSubject === 'music';
+  const isApparel = selectedSubject === 'apparel';
   const [articleContent, setArticleContent] = useState('');
   const [isArticleImageUploading, setIsArticleImageUploading] = useState(false);
   const [splashImageFile, setSplashImageFile] = useState<File | null>(null);
   const [splashImagePreview, setSplashImagePreview] = useState<string>('');
+  const [price, setPrice] = useState('');
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const { token: authToken } = useAuth();
   
   // Album management
   const [albumNames, setAlbumNames] = useState<string[]>([]);
@@ -218,21 +235,30 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     setSplashImageFile(null);
     setSplashImagePreview('');
     setArticleContent('');
+    setPrice('');
+    setGalleryFiles([]);
+    setGalleryPreviews([]);
   };
   
   const handleCreateAlbum = async () => {
     if (!newAlbumName.trim() || !selectedSubject) return;
-    
+
     setIsCreatingAlbum(true);
     setError(null);
-    
+
+    if (!authToken) {
+      setError('You must be signed in to create a new album.');
+      setIsCreatingAlbum(false);
+      return;
+    }
+
     try {
       // Try to create in database
       const category = selectedSubject === 'photo' ? 'photo' : selectedSubject;
       const newAlbum = await createAlbum({
         category,
         name: newAlbumName.trim(),
-      });
+      }, authToken);
       
       // Add to albums list and select it
       const albumSlug = newAlbum.slug || newAlbumName.trim().toLowerCase().replace(/\s+/g, '-');
@@ -269,7 +295,11 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       }
 
       const folder = selectedSubject === 'photo' ? 'photography' : 'art';
-      const uploadResult = await uploadImage(uploadFile, folder);
+      if (!authToken) {
+        throw new Error('You must be signed in to upload images.');
+      }
+
+      const uploadResult = await uploadImage(uploadFile, folder, authToken);
       return uploadResult.url;
     } catch (err) {
       console.error('[PostModal] Article image upload failed:', err);
@@ -356,10 +386,52 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   };
 
   const handleContentFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
 
     setError(null);
+
+    if (isApparel) {
+      const newFiles = Array.from(fileList).filter((file) => file.type.startsWith('image/'));
+      if (newFiles.length === 0) {
+        setError('Please upload image files for apparel products.');
+        return;
+      }
+
+      const existingKeys = new Set(galleryFiles.map((f) => `${f.name}-${f.size}`));
+      const deduped: File[] = [];
+      const previewPromises: Promise<string>[] = [];
+
+      newFiles.forEach((file) => {
+        const key = `${file.name}-${file.size}`;
+        if (!existingKeys.has(key)) {
+          deduped.push(file);
+          previewPromises.push(readFileAsDataUrl(file));
+        }
+      });
+
+      if (deduped.length === 0) {
+        return;
+      }
+
+      const updatedFiles = [...galleryFiles, ...deduped];
+      setGalleryFiles(updatedFiles);
+
+      try {
+        const previews = await Promise.all(previewPromises);
+        setGalleryPreviews((prev) => [...prev, ...previews]);
+      } catch (previewErr) {
+        console.warn('[PostModal] Failed to generate gallery preview:', previewErr);
+      }
+
+      setContentFile(updatedFiles[0] || null);
+      setContentImagePreview('');
+      setAudioPreviewName('');
+      e.target.value = '';
+      return;
+    }
+
+    const file = fileList[0];
 
     if (isMusic) {
       if (!file.type.startsWith('audio/')) {
@@ -389,6 +461,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       setContentImagePreview(result);
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleSplashImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -409,6 +482,18 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     reader.readAsDataURL(file);
   };
 
+  const handleRemoveGalleryImage = (index: number) => {
+    setGalleryFiles((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      setContentFile(updated[0] || null);
+      if (selectedSubject === 'apparel') {
+        setContentImagePreview('');
+      }
+      return updated;
+    });
+    setGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleThumbnailFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -419,7 +504,14 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     }
 
     setThumbnailFile(file);
-    // No preview stored for thumbnails
+    try {
+      const preview = await readFileAsDataUrl(file);
+      setThumbnailPreview(preview);
+    } catch (previewErr) {
+      console.warn('[PostModal] Failed to generate thumbnail preview:', previewErr);
+      setThumbnailPreview('');
+    }
+    e.target.value = '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -428,12 +520,18 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     setError(null);
     setIsSubmitting(true);
 
+    if (!authToken) {
+      setError('You must be signed in to create a post.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       console.log('[PostModal] Validating form data...');
       const isProject = selectedSubject === 'projects';
       const isBio = selectedSubject === 'bio';
 
-      if (!contentFile && !isBio) {
+      if (!contentFile && !isBio && !isApparel) {
         console.error('[PostModal] No file selected');
         setError(isMusic ? 'Please select an audio file' : 'Please upload a cover image');
         setIsSubmitting(false);
@@ -451,18 +549,99 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         setIsSubmitting(false);
         return;
       }
-      
+
+      let parsedPrice: number | null = null;
+      if (isApparel) {
+        parsedPrice = price.trim() === '' ? null : Number(price);
+        if (parsedPrice === null || Number.isNaN(parsedPrice) || parsedPrice < 0) {
+          setError('Please provide a valid price for apparel items.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (galleryFiles.length === 0) {
+          setError('Please upload at least one product image.');
+          setIsSubmitting(false);
+          return;
+        }
+        if (!thumbnailFile) {
+          setError('Please upload a thumbnail image for apparel posts.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+ 
       // Upload file to S3 first, then get the URL
       let uploadedContentUrl = contentUrl;
       let finalThumbnailUrl = thumbnailPreview || '';
       let uploadedHeroUrl: string | null = null;
       let splashImageUrl = selectedSubject === 'projects' ? finalThumbnailUrl : null;
-      
-      if (contentFile && !contentUrl) {
+      let galleryUrls: string[] = [];
+
+      if (isApparel) {
+        setIsUploading(true);
+        try {
+          const uploadedGallery: string[] = [];
+          for (const file of galleryFiles) {
+            let uploadFile = file;
+            try {
+              uploadFile = await compressImageFile(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.75 });
+            } catch (compressionErr) {
+              console.warn('[PostModal] Gallery image compression failed, using original file:', compressionErr);
+            }
+            if (!authToken) {
+              throw new Error('You must be signed in to upload images.');
+            }
+            const uploadResult = await uploadImage(uploadFile, 'apparel', authToken);
+            uploadedGallery.push(uploadResult.url);
+            if (!uploadedHeroUrl) {
+              uploadedHeroUrl = uploadResult.url;
+            }
+          }
+          galleryUrls = uploadedGallery;
+          uploadedContentUrl = uploadedGallery[0] || uploadedContentUrl;
+          if (uploadedGallery[0]) {
+            setContentUrl(uploadedGallery[0]);
+          }
+
+          if (thumbnailFile) {
+            try {
+              const compressedThumb = await compressImageFile(thumbnailFile, { maxWidth: 800, maxHeight: 800, quality: 0.7, forceSquare: true });
+              if (!authToken) {
+                throw new Error('You must be signed in to upload images.');
+              }
+              const thumbnailUpload = await uploadImage(compressedThumb, 'thumbnails', authToken);
+              finalThumbnailUrl = thumbnailUpload.url;
+            } catch (thumbErr) {
+              console.warn('[PostModal] Thumbnail compression failed for apparel, uploading original:', thumbErr);
+              if (authToken) {
+                const fallbackThumbUpload = await uploadImage(thumbnailFile, 'thumbnails', authToken);
+                finalThumbnailUrl = fallbackThumbUpload.url;
+              } else {
+                finalThumbnailUrl = uploadedHeroUrl || finalThumbnailUrl;
+              }
+            }
+          } else if (uploadedGallery[0]) {
+            finalThumbnailUrl = uploadedGallery[0];
+          }
+        } catch (err) {
+          console.error('[PostModal] Apparel upload error:', err);
+          setError(err instanceof Error ? err.message : 'Failed to upload apparel images');
+          setIsSubmitting(false);
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
+      if (!isApparel && contentFile && !contentUrl) {
         console.log('[PostModal] Uploading file to S3...');
         setIsUploading(true);
         try {
-          const uploadResult = await uploadImage(contentFile, resolvePrimaryFolder());
+          if (!authToken) {
+            throw new Error('You must be signed in to upload images.');
+          }
+          const uploadResult = await uploadImage(contentFile, resolvePrimaryFolder(), authToken);
           uploadedHeroUrl = uploadResult.url;
           uploadedContentUrl = uploadResult.url;
           setContentUrl(uploadResult.url);
@@ -473,14 +652,20 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
             }
             console.log('[PostModal] Uploading thumbnail image for audio post...');
             const compressedThumb = await compressImageFile(thumbnailFile, { maxWidth: 800, maxHeight: 800, quality: 0.7, forceSquare: true });
-            const thumbnailUpload = await uploadImage(compressedThumb, 'thumbnails');
+            if (!authToken) {
+              throw new Error('You must be signed in to upload images.');
+            }
+            const thumbnailUpload = await uploadImage(compressedThumb, 'thumbnails', authToken);
             finalThumbnailUrl = thumbnailUpload.url;
             console.log('[PostModal] Thumbnail uploaded successfully:', thumbnailUpload.url);
           } else {
             try {
               console.log('[PostModal] Compressing image for thumbnail...');
               const compressedFile = await compressImageFile(contentFile, { maxWidth: 1000, maxHeight: 1000, quality: 0.65 });
-              const thumbnailUpload = await uploadImage(compressedFile, 'thumbnails');
+              if (!authToken) {
+                throw new Error('You must be signed in to upload images.');
+              }
+              const thumbnailUpload = await uploadImage(compressedFile, 'thumbnails', authToken);
               finalThumbnailUrl = thumbnailUpload.url;
               console.log('[PostModal] Thumbnail uploaded successfully:', thumbnailUpload.url);
             } catch (thumbError) {
@@ -502,7 +687,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       if (isMajor && splashImageFile) {
         try {
           console.log('[PostModal] Uploading splash image for featured post...');
-          const splashUpload = await uploadImage(splashImageFile, 'splash-images');
+          if (!authToken) {
+            throw new Error('You must be signed in to upload images.');
+          }
+          const splashUpload = await uploadImage(splashImageFile, 'splash-images', authToken);
           splashImageUrl = splashUpload.url;
         } catch (splashErr) {
           console.warn('[PostModal] Splash image upload failed, falling back to hero:', splashErr);
@@ -526,7 +714,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       // Map subject to category (some naming differences)
       const category = selectedSubject === 'photo' ? 'photo' : selectedSubject;
       
-      const postData = {
+      const postData: PostCreate = {
         category,
         album: selectedAlbum,
         title,
@@ -538,11 +726,16 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         tags: tags.length > 0 ? tags : [],
         is_major: isMajor,
       };
-      
+
+      if (isApparel) {
+        postData.price = parsedPrice;
+        postData.gallery_urls = galleryUrls;
+      }
+
       console.log('[PostModal] Post data prepared:', postData);
       console.log('[PostModal] Calling createPost API...');
       
-      const newPost = await createPost(postData);
+      const newPost = await createPost(postData, authToken);
       console.log('[PostModal] Post created successfully:', newPost);
       
       // Reset form and close
@@ -556,6 +749,8 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       setThumbnailPreview('');
       setContentFile(null);
       setThumbnailFile(null);
+      setGalleryFiles([]);
+      setGalleryPreviews([]);
       setTags([]);
       setTagInput('');
       setIsMajor(false);
@@ -563,6 +758,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       setArticleContent('');
       setSplashImageFile(null);
       setSplashImagePreview('');
+      setPrice('');
       setDate(getCurrentESTDateTime());
       setIsSubmitting(false);
       onClose();
@@ -586,6 +782,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     if (isMusic) return 'audio';
     if (selectedSubject === 'photo') return 'photography';
     if (selectedSubject === 'bio') return 'art';
+    if (selectedSubject === 'apparel') return 'apparel';
     return 'art';
   };
 
@@ -753,7 +950,9 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         ? 'Audio Upload'
                         : selectedSubject === 'projects'
                           ? 'Thumbnail Upload'
-                          : 'Image Upload'}
+                          : selectedSubject === 'apparel'
+                            ? 'Product Gallery Images'
+                            : 'Image Upload'}
                     </label>
                     
                     {/* File Upload */}
@@ -779,14 +978,18 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                                   ? 'Click to upload project thumbnail'
                                   : selectedSubject === 'music'
                                     ? 'Click to upload or drag and drop audio'
-                                    : 'Click to upload or drag and drop'}
+                                    : selectedSubject === 'apparel'
+                                      ? 'Click to upload one or more product photos'
+                                      : 'Click to upload or drag and drop'}
                               </p>
                               <p className="text-xs text-white/60 mt-1">
                                 {selectedSubject === 'music'
                                   ? 'MP3 up to 50MB'
                                   : selectedSubject === 'projects'
                                     ? 'PNG, JPG up to 10MB • Square or 3:2 recommended'
-                                    : 'PNG, JPG, GIF up to 50MB'}
+                                    : selectedSubject === 'apparel'
+                                      ? 'PNG, JPG up to 10MB • Add multiple angles'
+                                      : 'PNG, JPG, GIF up to 50MB'}
                               </p>
                             </>
                           )}
@@ -795,13 +998,14 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                           type="file"
                           className="hidden"
                           accept={isMusic ? 'audio/*' : 'image/*'}
+                          multiple={isApparel}
                           onChange={handleContentFileSelect}
                           disabled={isUploading}
                         />
                       </label>
                     </div>
                     
-                    {selectedSubject !== 'music' && contentImagePreview && (
+                    {selectedSubject !== 'music' && !isApparel && contentImagePreview && (
                       <div className="mt-3">
                         <img
                           src={contentImagePreview}
@@ -816,14 +1020,40 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         <p>{audioPreviewName}</p>
                       </div>
                     )}
-                    
+
+                    {isApparel && galleryPreviews.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm text-white/70 mb-2">Gallery Preview</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {galleryPreviews.map((preview, index) => (
+                            <div key={`${preview}-${index}`} className="relative group">
+                              <img
+                                src={preview}
+                                alt={`Gallery ${index + 1}`}
+                                className="w-full h-32 object-cover rounded-lg border border-white/20"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGalleryImage(index)}
+                                className="absolute top-2 right-2 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+ 
                     {/* Thumbnail preview hidden intentionally */}
                   </div>
 
-                  {selectedSubject === 'music' && (
+                  {(selectedSubject === 'music' || selectedSubject === 'apparel') && (
                     <div>
                       <label className="block text-sm font-medium text-white/90 mb-2">
-                        Thumbnail Image (1:1)
+                        {selectedSubject === 'music'
+                          ? 'Thumbnail Image (1:1)'
+                          : 'Apparel Thumbnail (1:1 recommended)'}
                       </label>
                       <div className="mb-3">
                         <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/30 rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors">
@@ -837,7 +1067,11 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                             ) : (
                               <>
                                 <Upload className="w-8 h-8 text-white/60 mb-2" />
-                                <p className="text-sm text-white/80">Click to upload image thumbnail</p>
+                                <p className="text-sm text-white/80">
+                                  {selectedSubject === 'music'
+                                    ? 'Click to upload image thumbnail'
+                                    : 'Click to upload product thumbnail'}
+                                </p>
                                 <p className="text-xs text-white/60 mt-1">Square image recommended</p>
                               </>
                             )}
@@ -851,7 +1085,15 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                           />
                         </label>
                       </div>
-                      {/* Thumbnail preview hidden intentionally */}
+                      {thumbnailPreview && (
+                        <div className="mt-3">
+                          <img
+                            src={thumbnailPreview}
+                            alt="Thumbnail preview"
+                            className="max-w-full h-auto max-h-40 rounded-lg border border-white/20 object-cover"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -901,6 +1143,24 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                       required
                     />
                   </div>
+
+                  {isApparel && (
+                    <div>
+                      <label className="block text-sm font-medium text-white/90 mb-2">
+                        Price (USD)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                        className="w-full p-3 border border-white/30 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 placeholder-white/50"
+                        placeholder="e.g. 39.99"
+                        required
+                      />
+                    </div>
+                  )}
 
                   {/* Description */}
                   <div>
@@ -1034,10 +1294,12 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         !selectedAlbum ||
                         !title ||
                         !description ||
-                        (!contentFile && selectedSubject !== 'bio') ||
+                        (!contentFile && selectedSubject !== 'bio' && selectedSubject !== 'apparel') ||
                         (selectedSubject === 'projects' && !articleContent.trim()) ||
                         (selectedSubject === 'bio' && !contentFile && !articleContent.trim()) ||
-                        (isMusic && !thumbnailFile) ||
+                        ((isMusic || isApparel) && !thumbnailFile) ||
+                        (isApparel && price.trim() === '') ||
+                        (isApparel && galleryFiles.length === 0) ||
                         isSubmitting ||
                         isUploading ||
                         isArticleImageUploading

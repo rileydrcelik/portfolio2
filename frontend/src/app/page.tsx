@@ -50,7 +50,11 @@ export default function HomePage() {
           willChange: 'opacity, transform'
         }}
       >
-        <Feed directory="pinterest_placeholders" />
+        <Feed
+          directory="pinterest_placeholders"
+          useDatabase={true}
+          limit={50}
+        />
       </div>
     </div>
   );

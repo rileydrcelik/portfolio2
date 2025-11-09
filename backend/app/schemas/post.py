@@ -4,7 +4,7 @@ from typing import Optional, List
 from uuid import UUID
 
 class PostBase(BaseModel):
-    category: str = Field(..., description="Category: art, photo, music, projects, bio")
+    category: str = Field(..., description="Category: art, photo, music, projects, bio, apparel")
     album: str = Field(..., description="Album within category")
     title: str = Field(..., max_length=255)
     description: str
@@ -14,6 +14,8 @@ class PostBase(BaseModel):
     date: datetime = Field(..., description="Date for sorting/feed")
     tags: List[str] = Field(default_factory=list, description="Tags for technology, techniques, emotions, etc.")
     is_major: bool = Field(default=False, description="Flag indicating whether the post is major (featured)")
+    price: Optional[float] = Field(default=None, ge=0, description="Price for apparel posts")
+    gallery_urls: List[str] = Field(default_factory=list, description="Additional gallery images for apparel posts")
 
 class PostCreate(PostBase):
     slug: Optional[str] = Field(default=None, description="Custom slug override")
@@ -30,6 +32,8 @@ class PostUpdate(BaseModel):
     tags: Optional[List[str]] = None
     is_major: Optional[bool] = None
     slug: Optional[str] = None
+    price: Optional[float] = None
+    gallery_urls: Optional[List[str]] = None
 
 class PostResponse(PostBase):
     slug: str

@@ -11,45 +11,13 @@ interface ImageTileProps {
     image: string;
     category: string;
     isText?: boolean;
+    price?: number | null;
   };
   index: number;
 }
 
 export default function ImageTile({ item, index }: ImageTileProps) {
-  // Generate arbitrary apparel data for hover tooltips
-  const getApparelData = (itemId: number) => {
-    const apparelNames = [
-      "Vintage Denim Jacket",
-      "Urban Street Hoodie", 
-      "Classic White Tee",
-      "Retro Graphic Sweatshirt",
-      "Minimalist Black Hoodie",
-      "Vintage Band Tee",
-      "Streetwear Crop Top",
-      "Oversized Flannel",
-      "Distressed Denim",
-      "Athletic Joggers",
-      "Canvas Sneakers",
-      "Leather Backpack",
-      "Baseball Cap",
-      "Beanie Hat",
-      "Canvas Tote Bag"
-    ];
-    
-    const prices = [29, 45, 19, 35, 42, 25, 22, 38, 55, 32, 89, 75, 18, 15, 28];
-    
-    const nameIndex = itemId % apparelNames.length;
-    const priceIndex = itemId % prices.length;
-    
-    return {
-      name: apparelNames[nameIndex],
-      price: prices[priceIndex]
-    };
-  };
-
-  const isApparel = item.category.toLowerCase() === 'apparel';
   const isText = item.isText || (!item.image && item.category.toLowerCase() === 'bio');
-  const apparelData = isApparel ? getApparelData(item.id) : null;
 
   return (
     <div className="group cursor-pointer h-full">
@@ -70,18 +38,6 @@ export default function ImageTile({ item, index }: ImageTileProps) {
             loading={index === 0 ? "eager" : "lazy"}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
-        )}
-
-        {/* Apparel Hover Tooltip */}
-        {isApparel && (
-          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center">
-            <div className="text-white p-4 pb-6 w-full">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">{apparelData?.name}</h3>
-                <p className="text-xl font-bold">{apparelData?.price}</p>
-              </div>
-            </div>
-          </div>
         )}
       </div>
     </div>

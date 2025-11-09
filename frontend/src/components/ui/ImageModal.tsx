@@ -23,6 +23,9 @@ interface ImageModalProps {
   category?: string;
   album?: string;
   isText?: boolean;
+  price?: number | null;
+  galleryUrls?: string[];
+  canEdit?: boolean;
 }
 
 export default function ImageModal({
@@ -41,70 +44,52 @@ export default function ImageModal({
   category,
   album,
   isText,
+  price,
+  galleryUrls,
+  canEdit = false,
 }: ImageModalProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const previousScrollRef = useRef(0);
   const [mounted, setMounted] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const galleryImages = useMemo(() => {
+    if (galleryUrls && galleryUrls.length > 0) {
+      return galleryUrls;
+    }
+    if (image) {
+      return [image];
+    }
+    return [] as string[];
+  }, [galleryUrls, image]);
+
+  const displayedImage = galleryImages[activeImageIndex] || image;
 
   useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
+    setActiveImageIndex(0);
+  }, [galleryImages, isOpen]);
 
-  useEffect(() => {
-    if (isOpen) {
-      previousScrollRef.current = window.scrollY;
-      const bodyStyle = document.body.style;
-      const htmlStyle = document.documentElement.style;
-      const originalBodyOverflow = bodyStyle.overflow;
-      const originalHtmlOverflow = htmlStyle.overflow;
-      htmlStyle.overflow = 'hidden';
-      bodyStyle.overflow = 'hidden';
-      return () => {
-        htmlStyle.overflow = originalHtmlOverflow;
-        bodyStyle.overflow = originalBodyOverflow;
-        window.scrollTo({ top: previousScrollRef.current, behavior: 'auto' });
-      };
-    }
-  }, [isOpen]);
-  
-  const handleImageClick = () => {
-    if (isAudio || (contentUrl && (category === 'projects' || category === 'bio')) || isText) {
-      return;
-    }
-    setIsFullscreen(true);
-  };
-  
-  const handleCloseFullscreen = () => {
-    setIsFullscreen(false);
-  };
-  
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-  
-  const handleDeleteConfirm = async () => {
-    if (!postId || !onDelete) return;
-    
-    setIsDeleting(true);
+  const formattedPrice = useMemo(() => {
+    if (price === undefined || price === null) return null;
     try {
-      await onDelete(postId);
-      setShowDeleteConfirm(false);
-      onClose();
-    } catch (err) {
-      console.error('Error deleting post:', err);
-      setIsDeleting(false);
+      const isWhole = Number.isInteger(price);
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: isWhole ? 0 : 2,
+        maximumFractionDigits: isWhole ? 0 : 2,
+      }).format(price);
+    } catch {
+      const isWhole = Number.isInteger(price);
+      return isWhole ? price.toFixed(0) : price.toFixed(2);
     }
-  };
-  
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
-  };
+  }, [price]);
 
   const isProject = category === 'projects';
   const isBio = category === 'bio' || isText;
+  const isApparel = category === 'apparel';
+
+  const fullscreenImage = isProject ? (contentUrl || image) : (displayedImage || contentUrl || image);
 
   const articleContent = useMemo(() => {
     if (!(isProject || isBio) || !contentUrl) return '';
@@ -136,6 +121,62 @@ export default function ImageModal({
     },
   }), []);
 
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      previousScrollRef.current = window.scrollY;
+      const bodyStyle = document.body.style;
+      const htmlStyle = document.documentElement.style;
+      const originalBodyOverflow = bodyStyle.overflow;
+      const originalHtmlOverflow = htmlStyle.overflow;
+      htmlStyle.overflow = 'hidden';
+      bodyStyle.overflow = 'hidden';
+      return () => {
+        htmlStyle.overflow = originalHtmlOverflow;
+        bodyStyle.overflow = originalBodyOverflow;
+        window.scrollTo({ top: previousScrollRef.current, behavior: 'auto' });
+      };
+    }
+  }, [isOpen]);
+  
+  const handleImageClick = () => {
+    if (isAudio || (contentUrl && (category === 'projects' || category === 'bio')) || isText) {
+      return;
+    }
+    if (!displayedImage) return;
+    setIsFullscreen(true);
+  };
+  
+  const handleCloseFullscreen = () => {
+    setIsFullscreen(false);
+  };
+  
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!postId || !onDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(postId);
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      setIsDeleting(false);
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+  };
+
   if (!mounted) return null;
 
   return createPortal(
@@ -165,7 +206,7 @@ export default function ImageModal({
               <div className="flex items-center justify-between p-6 border-b border-white/20">
                 <h2 className="text-2xl font-bold text-white">{title}</h2>
                 <div className="flex items-center gap-2">
-                  {postId && onDelete && (
+                  {canEdit && postId && onDelete && (
                     <button
                       onClick={handleDeleteClick}
                       disabled={isDeleting}
@@ -240,13 +281,29 @@ export default function ImageModal({
               ) : (
                 <div className="flex flex-col lg:flex-row max-h-[calc(90vh-80px)]">
                   <div className="lg:w-1/2 p-6 space-y-4">
-                    {!(isProject || isBio) && (
+                    {!(isProject || isBio) && displayedImage && (
                       <div className="relative cursor-pointer" onClick={handleImageClick}>
                         <img
-                          src={image}
+                          src={displayedImage}
                           alt={title}
                           className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102"
                         />
+                      </div>
+                    )}
+                    {galleryImages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pt-1 pb-1">
+                        {galleryImages.map((url, index) => (
+                          <button
+                            key={`${url}-${index}`}
+                            type="button"
+                            onClick={() => setActiveImageIndex(index)}
+                            className={`relative flex-shrink-0 w-16 h-16 rounded-lg border ${
+                              index === activeImageIndex ? 'border-white' : 'border-white/20'
+                            } overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors`}
+                          >
+                            <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
                       </div>
                     )}
                     {isAudio && contentUrl && (
@@ -268,6 +325,19 @@ export default function ImageModal({
                         <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{description}</p>
                       </div>
 
+                      {isApparel && (
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold border border-white/20 shadow-md shadow-black/30 transition-all duration-200 w-full md:w-auto backdrop-blur-sm hover:border-white/50 hover:shadow-xl hover:bg-white/20"
+                          aria-label="Buy item (coming soon)"
+                        >
+                          Buy
+                          {formattedPrice && (
+                            <span className="text-sm font-medium text-white/80">{formattedPrice}</span>
+                          )}
+                        </button>
+                      )}
+
                       {tags && tags.length > 0 && (
                         <div>
                           <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
@@ -284,21 +354,29 @@ export default function ImageModal({
                         </div>
                       )}
 
-                      <div>
-                        <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
-                        <div className="space-y-2 text-white/80">
-                          {date && (
-                            <p>
-                              <span className="font-medium">Created:</span>{' '}
-                              {new Date(date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </p>
-                          )}
+                      {!isApparel && (
+                        <div>
+                          <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
+                          <div className="space-y-2 text-white/80">
+                            {album && (
+                              <p>
+                                <span className="font-medium">Album:</span>{' '}
+                                {album}
+                              </p>
+                            )}
+                            {date && (
+                              <p>
+                                <span className="font-medium">Created:</span>{' '}
+                                {new Date(date).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -354,7 +432,7 @@ export default function ImageModal({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <img
-                    src={contentUrl || image}
+                    src={fullscreenImage}
                     alt={title}
                     className="max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] object-contain rounded-xl"
                   />

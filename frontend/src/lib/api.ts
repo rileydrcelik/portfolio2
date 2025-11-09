@@ -15,6 +15,8 @@ export interface Post {
   date: string;
   tags: string[];
   is_major: boolean;
+  price?: number | null;
+  gallery_urls?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +34,8 @@ export interface PostCreate {
   is_major?: boolean;
   slug?: string | null;
   article_content?: string | null;
+  price?: number | null;
+  gallery_urls?: string[];
 }
 
 export async function getPosts(params?: {
@@ -71,7 +75,7 @@ export async function getPostBySlug(slug: string): Promise<Post> {
   return response.json();
 }
 
-export async function createPost(post: PostCreate): Promise<Post> {
+export async function createPost(post: PostCreate, authToken?: string): Promise<Post> {
   console.log('[API] createPost called with:', post);
   console.log('[API] API_URL:', API_URL);
   console.log('[API] Full URL:', `${API_URL}/api/posts`);
@@ -82,6 +86,7 @@ export async function createPost(post: PostCreate): Promise<Post> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
       body: JSON.stringify(post),
     });
@@ -118,11 +123,12 @@ export async function createPost(post: PostCreate): Promise<Post> {
   }
 }
 
-export async function updatePost(id: string, post: Partial<PostCreate>): Promise<Post> {
+export async function updatePost(id: string, post: Partial<PostCreate>, authToken?: string): Promise<Post> {
   const response = await fetch(`${API_URL}/api/posts/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     },
     body: JSON.stringify(post),
   });
@@ -133,13 +139,16 @@ export async function updatePost(id: string, post: Partial<PostCreate>): Promise
   return response.json();
 }
 
-export async function deletePost(id: string): Promise<void> {
+export async function deletePost(id: string, authToken?: string): Promise<void> {
   console.log('[API] deletePost called with id:', id);
   console.log('[API] Delete URL:', `${API_URL}/api/posts/${id}`);
   
   try {
     const response = await fetch(`${API_URL}/api/posts/${id}`, {
       method: 'DELETE',
+      headers: {
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
     });
     
     console.log('[API] Delete response:', {
@@ -149,16 +158,28 @@ export async function deletePost(id: string): Promise<void> {
     });
     
     if (!response.ok) {
-      let errorData;
+      let errorMessage = '';
       try {
-        errorData = await response.json();
-        console.error('[API] Delete error response:', errorData);
-      } catch (e) {
+        const maybeJson = await response.json();
+        if (maybeJson && typeof maybeJson.detail === 'string') {
+          errorMessage = maybeJson.detail;
+        }
+      } catch (jsonErr) {
         const text = await response.text();
-        console.error('[API] Delete error text:', text);
-        errorData = { detail: text || 'Failed to delete post' };
+        if (text) {
+          errorMessage = text;
+        }
       }
-      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+
+      if (!errorMessage) {
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = 'You are not authorized to delete posts with this account.';
+        } else {
+          errorMessage = `Failed to delete post (HTTP ${response.status})`;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
     
     console.log('[API] Post deleted successfully from database');
@@ -167,7 +188,7 @@ export async function deletePost(id: string): Promise<void> {
     if (err instanceof TypeError && err.message.includes('fetch')) {
       throw new Error(`Network error: Unable to connect to ${API_URL}. Is the backend server running?`);
     }
-    throw err;
+    throw err instanceof Error ? err : new Error('Failed to delete post');
   }
 }
 
@@ -178,7 +199,7 @@ export interface UploadResponse {
   content_type: string;
 }
 
-export async function uploadImage(file: File, folder?: string): Promise<UploadResponse> {
+export async function uploadImage(file: File, folder?: string, authToken?: string): Promise<UploadResponse> {
   console.log('[API] uploadImage called with:', { filename: file.name, size: file.size, type: file.type, folder });
   const uploadUrl = new URL(`${API_URL}/api/upload/image`);
   if (folder) {
@@ -193,6 +214,9 @@ export async function uploadImage(file: File, folder?: string): Promise<UploadRe
     console.log('[API] Making upload request...');
     const response = await fetch(uploadUrl.toString(), {
       method: 'POST',
+      headers: {
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
       body: formData,
     });
     
@@ -277,11 +301,12 @@ export async function getAlbumsByCategory(category: string): Promise<string[]> {
   }
 }
 
-export async function createAlbum(album: CreateAlbumRequest): Promise<Album> {
+export async function createAlbum(album: CreateAlbumRequest, authToken?: string): Promise<Album> {
   const response = await fetch(`${API_URL}/api/albums/create-by-category`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     },
     body: JSON.stringify(album),
   });

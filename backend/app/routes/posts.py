@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.post import Post
 from app.schemas.post import PostCreate, PostUpdate, PostResponse
 from app.lib.s3 import delete_file_from_s3
+from app.lib.firebase_auth import verify_firebase_token
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ async def get_post_by_slug(slug: str, db: Session = Depends(get_db)):
     return post
 
 @router.post("/", response_model=PostResponse)
-async def create_post(post: PostCreate, db: Session = Depends(get_db)):
+async def create_post(post: PostCreate, db: Session = Depends(get_db), current_user=Depends(verify_firebase_token)):
     """Create a new post"""
     data = post.dict(exclude_unset=True)
     title = data.get('title')
@@ -120,6 +121,11 @@ async def create_post(post: PostCreate, db: Session = Depends(get_db)):
 
     category = data.get('category')
     is_major = data.get('is_major', False)
+
+    if 'tags' not in data or data['tags'] is None:
+        data['tags'] = []
+    if 'gallery_urls' not in data or data['gallery_urls'] is None:
+        data['gallery_urls'] = []
 
     if is_major and category in {'art', 'photo'}:
         if not data.get('splash_image_url'):
@@ -138,7 +144,8 @@ async def create_post(post: PostCreate, db: Session = Depends(get_db)):
 async def update_post(
     post_id: str,
     post_update: PostUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(verify_firebase_token)
 ):
     """Update an existing post"""
     db_post = db.query(Post).filter(Post.id == post_id).first()
@@ -167,7 +174,7 @@ async def update_post(
     return db_post
 
 @router.delete("/{post_id}")
-async def delete_post(post_id: str, db: Session = Depends(get_db)):
+async def delete_post(post_id: str, db: Session = Depends(get_db), current_user=Depends(verify_firebase_token)):
     """Delete a post"""
     db_post = db.query(Post).filter(Post.id == post_id).first()
     if not db_post:

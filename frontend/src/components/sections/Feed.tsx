@@ -7,6 +7,7 @@ import { imageSets } from '@/data/imageData';
 import ImageModal from '@/components/ui/ImageModal';
 import FeedSkeleton from '@/components/ui/FeedSkeleton';
 import { getPosts, Post, deletePost } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 
 // 9-column grid system: small items (2x3, 3x2, 2x2) and large items (4x3, 3x4, 3x4)
 const TILE_SHAPES = {
@@ -44,6 +45,8 @@ interface FeedItem {
   isAudio?: boolean;
   slug?: string;
   isText?: boolean;
+  price?: number | null;
+  galleryUrls?: string[];
 }
 
 interface FeedProps {
@@ -118,7 +121,9 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     
     // Use thumbnail_url for the feed display
     const looksLikeText = post.category === 'bio' || (post.content_url && post.content_url.length > 0 && !/^https?:\/\//i.test(post.content_url));
-    const imageUrl = looksLikeText ? (post.thumbnail_url || '') : (post.thumbnail_url || post.content_url);
+    const fallbackImage = looksLikeText ? (post.thumbnail_url || '') : (post.thumbnail_url || post.content_url);
+    const primaryGalleryImage = Array.isArray(post.gallery_urls) && post.gallery_urls.length > 0 ? post.gallery_urls[0] : undefined;
+    const imageUrl = primaryGalleryImage || fallbackImage;
     const contentUrl = post.content_url;
     const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(contentUrl);
     
@@ -144,6 +149,8 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       isAudio,
       slug: post.slug,
       isText: Boolean(looksLikeText && !imageUrl),
+      price: post.price ?? null,
+      galleryUrls: post.gallery_urls || [],
     });
   }
   
@@ -202,6 +209,8 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
       contentUrl: undefined,
       isAudio: false,
       slug: undefined, // No slug for static images
+      price: undefined,
+      galleryUrls: undefined,
     });
   }
   
@@ -327,6 +336,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   const [isLoading, setIsLoading] = useState(true);
   const fetchLimit = limit ?? 1000;
   const previousUrlRef = useRef<string | null>(null);
+  const { token: authToken, user } = useAuth();
   
   // Callback ref to measure width when element is mounted
   const containerRefCallback = useCallback((node: HTMLDivElement | null) => {
@@ -453,10 +463,13 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     }
   };
   
-  const handleDeletePost = async (postId: string) => {
-    console.log('[Feed] Deleting post:', postId);
+  const handleDeletePost = useCallback(async (postId: string) => {
+    if (!authToken) {
+      console.warn('[Feed] Attempted to delete post without auth token.');
+      return;
+    }
     try {
-      await deletePost(postId);
+      await deletePost(postId, authToken);
       console.log('[Feed] Post deleted successfully');
       
       // Remove from allFeedItems
@@ -469,7 +482,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       console.error('[Feed] Error deleting post:', err);
       throw err; // Re-throw so ImageModal can handle it
     }
-  };
+  }, [authToken]);
 
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -545,7 +558,10 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           category={selectedImage.category}
           album={selectedImage.album}
           isText={selectedImage.isText}
-          onDelete={useDatabase ? handleDeletePost : undefined}
+          price={selectedImage.price}
+          galleryUrls={selectedImage.galleryUrls}
+          onDelete={useDatabase && authToken ? handleDeletePost : undefined}
+          canEdit={Boolean(authToken && user)}
         />
       )}
     </div>
