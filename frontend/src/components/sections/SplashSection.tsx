@@ -278,7 +278,7 @@ export default function SplashSection() {
           >
             <Image
               src={featuredImageUrl}
-              alt={featuredPost.title || 'Splash'}
+              alt={featuredPost?.title ?? 'Splash'}
               fill
               className="object-cover pointer-events-none select-none"
               priority
