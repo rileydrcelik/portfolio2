@@ -10,7 +10,7 @@ import remarkGfm from 'remark-gfm';
 interface ImageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  image: string;
+  image?: string | null;
   title: string;
   description: string;
   date?: string;
@@ -31,7 +31,7 @@ interface ImageModalProps {
 export default function ImageModal({
   isOpen,
   onClose,
-  image,
+  image = '',
   title,
   description,
   date,
