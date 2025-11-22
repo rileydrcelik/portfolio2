@@ -32,16 +32,16 @@ function getCurrentESTDateTime(): string {
   const month = now.getUTCMonth();
   const isEDT = month >= 2 && month <= 10; // March (2) to November (10)
   const offset = isEDT ? edtOffset : estOffset;
-  
+
   const estDate = new Date(now.getTime() + offset * 60 * 1000);
-  
+
   // Format as datetime-local string (YYYY-MM-DDTHH:mm)
   const year = estDate.getUTCFullYear();
   const monthStr = String(estDate.getUTCMonth() + 1).padStart(2, '0');
   const dayStr = String(estDate.getUTCDate()).padStart(2, '0');
   const hoursStr = String(estDate.getUTCHours()).padStart(2, '0');
   const minutesStr = String(estDate.getUTCMinutes()).padStart(2, '0');
-  
+
   return `${year}-${monthStr}-${dayStr}T${hoursStr}:${minutesStr}`;
 }
 
@@ -172,6 +172,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState<string>('');
   const [isMajor, setIsMajor] = useState(false);
+  const [isActive, setIsActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [contentFile, setContentFile] = useState<File | null>(null);
@@ -188,7 +189,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const { token: authToken } = useAuth();
-  
+
   // Album management
   const [albumNames, setAlbumNames] = useState<string[]>([]);
   const [isLoadingAlbums, setIsLoadingAlbums] = useState(false);
@@ -238,8 +239,9 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     setPrice('');
     setGalleryFiles([]);
     setGalleryPreviews([]);
+    setIsActive(false);
   };
-  
+
   const handleCreateAlbum = async () => {
     if (!newAlbumName.trim() || !selectedSubject) return;
 
@@ -259,7 +261,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         category,
         name: newAlbumName.trim(),
       }, authToken);
-      
+
       // Add to albums list and select it
       const albumSlug = newAlbum.slug || newAlbumName.trim().toLowerCase().replace(/\s+/g, '-');
       if (!albumNames.includes(albumSlug)) {
@@ -343,10 +345,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         const canvas = document.createElement('canvas');
         const maxWidth = 400; // Similar to minor tile width
         const maxHeight = 400;
-        
+
         let width = image.width;
         let height = image.height;
-        
+
         // Calculate new dimensions maintaining aspect ratio
         if (width > height) {
           if (width > maxWidth) {
@@ -359,19 +361,19 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
             height = maxHeight;
           }
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
+
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           URL.revokeObjectURL(objectUrl);
           reject(new Error('Failed to get canvas context'));
           return;
         }
-        
+
         ctx.drawImage(image, 0, 0, width, height);
-        
+
         // Convert to data URL with compression
         const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         URL.revokeObjectURL(objectUrl);
@@ -569,7 +571,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
           return;
         }
       }
- 
+
       // Upload file to S3 first, then get the URL
       let uploadedContentUrl = contentUrl;
       let finalThumbnailUrl = thumbnailPreview || '';
@@ -713,7 +715,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
 
       // Map subject to category (some naming differences)
       const category = selectedSubject === 'photo' ? 'photo' : selectedSubject;
-      
+
       const postData: PostCreate = {
         category,
         album: selectedAlbum,
@@ -725,6 +727,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         date: new Date(date).toISOString(),
         tags: tags.length > 0 ? tags : [],
         is_major: isMajor,
+        is_active: isActive,
       };
 
       if (isApparel) {
@@ -734,10 +737,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
 
       console.log('[PostModal] Post data prepared:', postData);
       console.log('[PostModal] Calling createPost API...');
-      
+
       const newPost = await createPost(postData, authToken);
       console.log('[PostModal] Post created successfully:', newPost);
-      
+
       // Reset form and close
       console.log('[PostModal] Resetting form and closing modal...');
       setSelectedSubject('');
@@ -754,6 +757,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       setTags([]);
       setTagInput('');
       setIsMajor(false);
+      setIsActive(false);
       setAudioPreviewName('');
       setArticleContent('');
       setSplashImageFile(null);
@@ -762,7 +766,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       setDate(getCurrentESTDateTime());
       setIsSubmitting(false);
       onClose();
-      
+
       // Optionally refresh the page or trigger a refetch
       console.log('[PostModal] Reloading page...');
       window.location.reload();
@@ -799,7 +803,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
             transition={{ duration: 0.3, ease: "easeOut" }}
             onClick={onClose}
           />
-          
+
           {/* Modal Content */}
           <motion.div
             className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none"
@@ -819,7 +823,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                   <X className="w-6 h-6 text-white" />
                 </button>
               </div>
-              
+
               {/* Form Content */}
               <div className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -841,11 +845,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                           key={subject.id}
                           type="button"
                           onClick={() => handleSubjectSelect(subject.id)}
-                          className={`p-3 rounded-lg border-2 transition-colors flex flex-col items-center justify-center ${
-                            selectedSubject === subject.id
-                              ? 'border-white bg-white/25 text-white'
-                              : 'border-white/20 hover:border-white hover:text-white bg-white/5 text-white/60'
-                          }`}
+                          className={`p-3 rounded-lg border-2 transition-colors flex flex-col items-center justify-center ${selectedSubject === subject.id
+                            ? 'border-white bg-white/25 text-white'
+                            : 'border-white/20 hover:border-white hover:text-white bg-white/5 text-white/60'
+                            }`}
                         >
                           <div className="text-2xl mb-1">{subject.icon}</div>
                           <div className="text-sm font-medium text-center">{subject.name}</div>
@@ -860,7 +863,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                       <label className="block text-sm font-medium text-white/90 mb-3">
                         Select Album
                       </label>
-                      
+
                       {isLoadingAlbums ? (
                         <div className="text-white/60 text-sm">Loading albums...</div>
                       ) : (
@@ -874,16 +877,15 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                                 setSelectedAlbum(albumSlug);
                                 setShowCreateAlbum(false);
                               }}
-                              className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${
-                                selectedAlbum === albumSlug
-                                  ? 'border-white bg-white/25 text-white'
-                                  : 'border-white/20 hover:border-white hover:text-white bg-white/5 text-white/60'
-                              }`}
+                              className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${selectedAlbum === albumSlug
+                                ? 'border-white bg-white/25 text-white'
+                                : 'border-white/20 hover:border-white hover:text-white bg-white/5 text-white/60'
+                                }`}
                             >
                               {albumSlug}
                             </button>
                           ))}
-                          
+
                           {/* Create New Album Button */}
                           {!showCreateAlbum && (
                             <button
@@ -895,7 +897,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                               Create New Album
                             </button>
                           )}
-                          
+
                           {/* Create New Album Input */}
                           {showCreateAlbum && (
                             <div className="p-3 rounded-lg border-2 border-white/30 bg-white/10 space-y-2">
@@ -954,7 +956,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                             ? 'Product Gallery Images'
                             : 'Image Upload'}
                     </label>
-                    
+
                     {/* File Upload */}
                     <div className="mb-3">
                       <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/30 rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors">
@@ -1004,7 +1006,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         />
                       </label>
                     </div>
-                    
+
                     {selectedSubject !== 'music' && !isApparel && contentImagePreview && (
                       <div className="mt-3">
                         <img
@@ -1044,7 +1046,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         </div>
                       </div>
                     )}
- 
+
                     {/* Thumbnail preview hidden intentionally */}
                   </div>
 
@@ -1225,7 +1227,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                           <Plus className="w-5 h-5 text-white" />
                         </button>
                       </div>
-                      
+
                       {/* Tag Chips */}
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
@@ -1249,18 +1251,56 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                     </div>
                   </div>
 
+                  {/* Active Project Toggle */}
+                  {selectedSubject === 'projects' && (
+                    <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                      <div className="flex-1">
+                        <label htmlFor="isActive" className="text-white font-medium block mb-1">
+                          Active Project
+                        </label>
+                        <p className="text-sm text-white/60">
+                          Mark this project as currently active/in-progress
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isActive}
+                        onClick={() => setIsActive(!isActive)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/40 ${isActive ? 'bg-green-500' : 'bg-white/20'
+                          }`}
+                      >
+                        <span
+                          className={`${isActive ? 'translate-x-6' : 'translate-x-1'
+                            } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                        />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Major Post Toggle */}
-                  <div className="flex items-center gap-3">
-                    <input
-                      id="major-toggle"
-                      type="checkbox"
-                      checked={isMajor}
-                      onChange={(e) => setIsMajor(e.target.checked)}
-                      className="w-4 h-4 rounded border border-white/30 bg-white/10 text-white focus:ring-white/50"
-                    />
-                    <label htmlFor="major-toggle" className="text-sm font-medium text-white/90">
-                      Mark as major post
-                    </label>
+                  <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex-1">
+                      <label htmlFor="isMajor" className="text-white font-medium block mb-1">
+                        Featured Post
+                      </label>
+                      <p className="text-sm text-white/60">
+                        Mark this as a major/featured post (larger tile)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isMajor}
+                      onClick={() => setIsMajor(!isMajor)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white/40 ${isMajor ? 'bg-blue-500' : 'bg-white/20'
+                        }`}
+                    >
+                      <span
+                        className={`${isMajor ? 'translate-x-6' : 'translate-x-1'
+                          } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                      />
+                    </button>
                   </div>
 
                   {/* Date */}
@@ -1311,7 +1351,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                   </div>
                 </form>
               </div>
-          </div>
+            </div>
           </motion.div>
         </>
       )}

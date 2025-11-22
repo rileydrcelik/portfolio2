@@ -19,5 +19,7 @@ class Post(Base):
     price = Column(Numeric(10, 2), nullable=True)
     gallery_urls = Column(ARRAY(Text), nullable=False, default=list)
     is_major = Column(Boolean, nullable=False, default=False)
+    is_active = Column(Boolean, default=False)
+    is_favorite = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

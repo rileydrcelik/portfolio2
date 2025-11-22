@@ -39,27 +39,37 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
         try {
           // Fetch all posts for this category
           const allPosts = await getPosts({ category, limit: 1000 });
-          
+
           // Calculate counts per album
           const albumCounts = new Map<string, number>();
           allPosts.forEach(post => {
             const currentCount = albumCounts.get(post.album) || 0;
             albumCounts.set(post.album, currentCount + 1);
           });
-          
+
           // Create dynamic albums from unique album values in posts
           const dynamicAlbums: Album[] = Array.from(albumCounts.entries()).map(([albumSlug, count]) => ({
             id: albumSlug,
             name: albumSlug,
             count: count,
           })).sort((a, b) => a.name.localeCompare(b.name));
-          
+
+          // Check for favorites
+          const favoritesCount = allPosts.filter(post => post.is_favorite).length;
+          if (favoritesCount > 0) {
+            dynamicAlbums.unshift({
+              id: 'favorites',
+              name: 'favorites',
+              count: favoritesCount,
+            });
+          }
+
           setAlbums(dynamicAlbums);
-          
+
           // Calculate total count
           const total = Array.from(albumCounts.values()).reduce((sum, count) => sum + count, 0);
           setTotalCount(total);
-          
+
           // Extract all unique tags
           const tagSet = new Set<string>();
           allPosts.forEach(post => {
@@ -76,7 +86,7 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
           setAvailableTags([]);
         }
       };
-      
+
       fetchData();
     } else if (initialAlbums.length > 0) {
       // Use static albums when not using database
@@ -101,7 +111,7 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
         onTagChange={setActiveTag}
         categorySlug={categorySlug ?? category}
       />
-      
+
       {/* Feed with Filtering */}
       <Feed
         directory={directory}

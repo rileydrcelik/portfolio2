@@ -12,7 +12,7 @@ interface LayoutClientProps {
 export default function LayoutClient({ children }: LayoutClientProps) {
   const pathname = usePathname();
   const isHomePage = pathname === '/';
-  
+
   // Initialize based on page type - hide on home page initially
   const [showSidebar, setShowSidebar] = useState(!isHomePage);
 
@@ -49,17 +49,19 @@ export default function LayoutClient({ children }: LayoutClientProps) {
   }, [isHomePage]);
 
   return (
-    <div className="min-h-screen bg-black flex">
-      {/* Sidebar - always maintains space but conditionally visible */}
-      <div className="w-16 flex-shrink-0">
-        <div className="sticky top-0 h-screen">
+    <div className="min-h-screen bg-black flex flex-col md:flex-row">
+      {/* Sidebar - Bottom on mobile, Left on desktop */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:relative md:w-16 md:h-screen md:flex-shrink-0">
+        <div className="h-full w-full md:sticky md:top-0 md:h-screen">
           {showSidebar && <SideBar />}
         </div>
       </div>
-      
+
       {/* Content */}
       <ContentWrapper>
-        {children}
+        <div className="mb-20 md:mb-0">
+          {children}
+        </div>
       </ContentWrapper>
     </div>
   );

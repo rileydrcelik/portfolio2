@@ -12,6 +12,8 @@ interface ImageTileProps {
     category: string;
     isText?: boolean;
     price?: number | null;
+    isActive?: boolean;
+    isFavorite?: boolean;
   };
   index: number;
 }
@@ -38,6 +40,16 @@ export default function ImageTile({ item, index }: ImageTileProps) {
             loading={index === 0 ? "eager" : "lazy"}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
+        )}
+
+        {/* Active Project Indicator */}
+        {item.isActive && (
+          <div className="absolute top-3 right-3 z-10">
+            <div className="relative flex items-center justify-center w-4 h-4">
+              <div className="absolute w-full h-full bg-black/20 rounded-full backdrop-blur-[1px]" />
+              <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            </div>
+          </div>
         )}
       </div>
     </div>

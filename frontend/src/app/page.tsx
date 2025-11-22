@@ -9,7 +9,7 @@ export default function HomePage() {
 
   useEffect(() => {
     let ticking = false;
-    
+
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
@@ -30,21 +30,21 @@ export default function HomePage() {
   const fadeStart = windowHeight * 0.5;
   const fadeEnd = windowHeight * 1.0;
   const feedOpacity = windowHeight > 0 ? Math.max(0, Math.min(1, (scrollY - fadeStart) / (fadeEnd - fadeStart))) : 0;
-  
+
   // Slide up from 100px below
   const translateY = (1 - feedOpacity) * 100;
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Splash Section - extends to cover sidebar area */}
-      <div className="relative -ml-16 w-[calc(100%+4rem)]">
+      {/* Splash Section - extends to cover sidebar area on desktop */}
+      <div className="relative w-full md:-ml-16 md:w-[calc(100%+4rem)]">
         <SplashSection />
       </div>
-      
+
       {/* Feed - fades in and slides up as splash fades out */}
-      <div 
-        style={{ 
-          opacity: feedOpacity, 
+      <div
+        style={{
+          opacity: feedOpacity,
           transform: `translateY(${translateY}px)`,
           transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
           willChange: 'opacity, transform'

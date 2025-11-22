@@ -16,6 +16,8 @@ class PostBase(BaseModel):
     is_major: bool = Field(default=False, description="Flag indicating whether the post is major (featured)")
     price: Optional[float] = Field(default=None, ge=0, description="Price for apparel posts")
     gallery_urls: List[str] = Field(default_factory=list, description="Additional gallery images for apparel posts")
+    is_active: bool = Field(default=False, description="Flag indicating whether the project is active")
+    is_favorite: bool = Field(default=False, description="Flag indicating whether the post is a favorite")
 
 class PostCreate(PostBase):
     slug: Optional[str] = Field(default=None, description="Custom slug override")
@@ -34,6 +36,8 @@ class PostUpdate(BaseModel):
     slug: Optional[str] = None
     price: Optional[float] = None
     gallery_urls: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    is_favorite: Optional[bool] = None
 
 class PostResponse(PostBase):
     slug: str

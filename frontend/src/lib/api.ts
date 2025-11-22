@@ -68,6 +68,8 @@ export interface Post {
   gallery_urls?: string[];
   created_at: string;
   updated_at: string;
+  is_active?: boolean;
+  is_favorite?: boolean;
 }
 
 export interface PostCreate {
@@ -85,6 +87,8 @@ export interface PostCreate {
   article_content?: string | null;
   price?: number | null;
   gallery_urls?: string[];
+  is_active?: boolean;
+  is_favorite?: boolean;
 }
 
 export async function getPosts(params?: {
@@ -128,7 +132,7 @@ export async function createPost(post: PostCreate, authToken?: string): Promise<
   console.log('[API] createPost called with:', post);
   console.log('[API] API_URL:', API_URL);
   console.log('[API] Posts endpoint:', POSTS_ENDPOINT);
-  
+
   try {
     console.log('[API] Making fetch request...');
     const response = await fetch(POSTS_ENDPOINT, {
@@ -139,14 +143,14 @@ export async function createPost(post: PostCreate, authToken?: string): Promise<
       },
       body: JSON.stringify(post),
     });
-    
+
     console.log('[API] Response received:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
       headers: Object.fromEntries(response.headers.entries())
     });
-    
+
     if (!response.ok) {
       let errorData;
       try {
@@ -159,7 +163,7 @@ export async function createPost(post: PostCreate, authToken?: string): Promise<
       }
       throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log('[API] Success! Post created:', data);
     return data;
@@ -191,7 +195,7 @@ export async function updatePost(id: string, post: Partial<PostCreate>, authToke
 export async function deletePost(id: string, authToken?: string): Promise<void> {
   console.log('[API] deletePost called with id:', id);
   console.log('[API] Delete URL:', `${POSTS_ENDPOINT}${id}`);
-  
+
   try {
     const response = await fetch(`${POSTS_ENDPOINT}${id}`, {
       method: 'DELETE',
@@ -199,13 +203,13 @@ export async function deletePost(id: string, authToken?: string): Promise<void> 
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
     });
-    
+
     console.log('[API] Delete response:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
     });
-    
+
     if (!response.ok) {
       let errorMessage = '';
       try {
@@ -230,7 +234,7 @@ export async function deletePost(id: string, authToken?: string): Promise<void> 
 
       throw new Error(errorMessage);
     }
-    
+
     console.log('[API] Post deleted successfully from database');
   } catch (err) {
     console.error('[API] Delete fetch error:', err);
@@ -255,10 +259,10 @@ export async function uploadImage(file: File, folder?: string, authToken?: strin
     uploadUrl.searchParams.set('folder', folder);
   }
   console.log('[API] Upload URL:', uploadUrl.toString());
-  
+
   const formData = new FormData();
   formData.append('file', file);
-  
+
   try {
     console.log('[API] Making upload request...');
     const response = await fetch(uploadUrl.toString(), {
@@ -268,13 +272,13 @@ export async function uploadImage(file: File, folder?: string, authToken?: strin
       },
       body: formData,
     });
-    
+
     console.log('[API] Upload response:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok,
     });
-    
+
     if (!response.ok) {
       let errorData;
       let errorText = '';
@@ -299,7 +303,7 @@ export async function uploadImage(file: File, folder?: string, authToken?: strin
       console.error('[API] Upload failed with error:', errorMessage);
       throw new Error(errorMessage);
     }
-    
+
     const data = await response.json();
     console.log('[API] Upload success!', data);
     return data;

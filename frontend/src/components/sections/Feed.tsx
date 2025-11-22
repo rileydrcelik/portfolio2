@@ -23,9 +23,17 @@ const TILE_SHAPES = {
 
   // Apparel - Using minor portrait
   'apparel': { colSpan: 2, rowSpan: 3, size: 'apparel', aspect: 'portrait', category: 'apparel' }, // 2x3 units (2:3)
-  
+
   // Single column - for filling remaining space
   'single-column': { colSpan: 1, rowSpan: 2, size: 'minor', aspect: 'portrait', category: 'art' }, // 1x2 units (1:2)
+} as const;
+
+// Mobile Grid System (2 columns)
+const MOBILE_TILE_SHAPES = {
+  // Square items (1x1) - for square, landscape, and major items
+  'square': { colSpan: 1, rowSpan: 1 },
+  // Tall items (1x2) - for portrait items
+  'tall': { colSpan: 1, rowSpan: 2 },
 } as const;
 
 type TileShape = keyof typeof TILE_SHAPES;
@@ -50,6 +58,8 @@ interface FeedItem {
   thumbnailUrl?: string | null;
   splashUrl?: string | null;
   rawPost?: Post;
+  isActive?: boolean;
+  isFavorite?: boolean;
 }
 
 interface FeedProps {
@@ -118,10 +128,10 @@ const findClosestTileShape = (aspectRatio: number): TileShape => {
 // Function to convert Post objects to FeedItem objects (with image dimensions)
 const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
   const feedItems: FeedItem[] = [];
-  
+
   for (let index = 0; index < posts.length; index++) {
     const post = posts[index];
-    
+
     // Use thumbnail_url for the feed display
     const looksLikeText = post.category === 'bio' || (post.content_url && post.content_url.length > 0 && !/^https?:\/\//i.test(post.content_url));
     const fallbackImage = looksLikeText ? (post.thumbnail_url || '') : (post.thumbnail_url || post.content_url);
@@ -129,14 +139,14 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     const imageUrl = primaryGalleryImage || fallbackImage;
     const contentUrl = post.content_url;
     const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(contentUrl);
-    
+
     // Get image dimensions to calculate aspect ratio
     const dimensions = await getImageDimensions(imageUrl);
     const aspectRatio = dimensions.width / dimensions.height;
-    
+
     // Find the closest tile shape based on aspect ratio
     const tileShape = findClosestTileShape(aspectRatio);
-    
+
     feedItems.push({
       id: parseInt(post.id.replace(/-/g, '').substring(0, 8), 16) || index + 1, // Convert UUID to number for ID
       title: post.title,
@@ -157,9 +167,11 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       thumbnailUrl: post.thumbnail_url ?? null,
       splashUrl: post.splash_image_url ?? null,
       rawPost: post,
+      isActive: post.is_active,
+      isFavorite: post.is_favorite,
     });
   }
-  
+
   return feedItems;
 };
 
@@ -185,25 +197,25 @@ const fetchPostsFromDatabase = async (options: { category?: string; limit?: numb
 // Function to generate feed items based on directory (static images)
 const generateFeedItems = async (directory: string, activeAlbum: string = 'all'): Promise<FeedItem[]> => {
   const images = imageSets[directory] || imageSets['pinterest_placeholders'];
-  
+
   // Filter by album if not 'all'
-  const filteredImages = activeAlbum === 'all' 
-    ? images 
+  const filteredImages = activeAlbum === 'all'
+    ? images
     : images.filter(img => img.album === activeAlbum);
-  
+
   const feedItems: FeedItem[] = [];
-  
+
   for (let index = 0; index < filteredImages.length; index++) {
     const imageData = filteredImages[index];
     const fileName = imageData.path.split('/').pop()?.split('.')[0] || `item-${index}`;
-    
+
     // Get image dimensions to calculate aspect ratio
     const dimensions = await getImageDimensions(imageData.path);
     const aspectRatio = dimensions.width / dimensions.height;
-    
+
     // Find the closest tile shape based on aspect ratio
     const tileShape = findClosestTileShape(aspectRatio);
-    
+
     feedItems.push({
       id: index + 1,
       title: fileName.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -219,51 +231,68 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
       galleryUrls: undefined,
     });
   }
-  
+
   return feedItems;
 };
 
-        // Simple 2D Packing Algorithm with gap filling
-        const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 16) => {
-          const [positions, setPositions] = useState<Position[]>([]);
-          const [containerHeight, setContainerHeight] = useState(0);
-          const itemsLength = items.length;
-          const itemsKey = items.map(item => item.id).join(','); // Stable key based on item IDs
-          const prevItemsKeyRef = useRef<string>('');
+// Simple 2D Packing Algorithm with gap filling
+const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 16) => {
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [containerHeight, setContainerHeight] = useState(0);
+  const itemsLength = items.length;
+  const itemsKey = items.map(item => item.id).join(','); // Stable key based on item IDs
+  const prevItemsKeyRef = useRef<string>('');
 
-          useEffect(() => {
-            // Skip if items haven't actually changed (same IDs)
-            if (itemsKey === prevItemsKeyRef.current && itemsLength > 0) {
-              console.log('🎯 Skipping - items unchanged');
-              return;
-            }
-            prevItemsKeyRef.current = itemsKey;
-            
-            console.log('🎯 use2DPacking effect running:', { itemsLength, containerWidth });
-            if (itemsLength === 0 || containerWidth === 0) {
-              console.log('⏭️ Clearing positions - items:', itemsLength, 'width:', containerWidth);
-              // Only update if positions are not already empty
-              setPositions(prev => prev.length === 0 ? prev : []);
-              setContainerHeight(prev => prev === 0 ? prev : 0);
-              return;
-            }
+  useEffect(() => {
+    // Skip if items haven't actually changed (same IDs)
+    if (itemsKey === prevItemsKeyRef.current && itemsLength > 0) {
+      console.log('🎯 Skipping - items unchanged');
+      return;
+    }
+    prevItemsKeyRef.current = itemsKey;
 
-                const calculatePositions = () => {
-                  const gridUnits = 9; // 9-column grid system
-                  const unitWidth = (containerWidth - gap * (gridUnits - 1)) / gridUnits;
-                  const unitHeight = unitWidth; // Square units as base
+    console.log('🎯 use2DPacking effect running:', { itemsLength, containerWidth });
+    if (itemsLength === 0 || containerWidth === 0) {
+      console.log('⏭️ Clearing positions - items:', itemsLength, 'width:', containerWidth);
+      // Only update if positions are not already empty
+      setPositions(prev => prev.length === 0 ? prev : []);
+      setContainerHeight(prev => prev === 0 ? prev : 0);
+      return;
+    }
 
-                  // Create occupancy grid (9 columns, many rows)
-                  const maxRows = 200;
-                  const occupied = Array(maxRows).fill(null).map(() => Array(gridUnits).fill(false));
-      
+    const calculatePositions = () => {
+      const isMobile = containerWidth < 768;
+      const gridUnits = isMobile ? 2 : 9; // 2 columns for mobile, 9 for desktop
+      const unitWidth = (containerWidth - gap * (gridUnits - 1)) / gridUnits;
+      const unitHeight = unitWidth; // Square units as base
+
+      // Create occupancy grid (columns x rows)
+      const maxRows = 200;
+      const occupied = Array(maxRows).fill(null).map(() => Array(gridUnits).fill(false));
+
       const newPositions: Position[] = [];
-      
+
       // Place each item in order (preserves date sorting)
       items.forEach((item) => {
-        const shape = TILE_SHAPES[item.tileShape as TileShape];
-        const { colSpan, rowSpan } = shape;
-        
+        let colSpan, rowSpan;
+
+        if (isMobile) {
+          // Map original shapes to mobile shapes
+          const originalShape = TILE_SHAPES[item.tileShape as TileShape];
+          // If it's portrait or apparel, make it tall (1x2), otherwise square (1x1)
+          if (originalShape.aspect === 'portrait') {
+            colSpan = MOBILE_TILE_SHAPES.tall.colSpan;
+            rowSpan = MOBILE_TILE_SHAPES.tall.rowSpan;
+          } else {
+            colSpan = MOBILE_TILE_SHAPES.square.colSpan;
+            rowSpan = MOBILE_TILE_SHAPES.square.rowSpan;
+          }
+        } else {
+          const shape = TILE_SHAPES[item.tileShape as TileShape];
+          colSpan = shape.colSpan;
+          rowSpan = shape.rowSpan;
+        }
+
         // Find first available position (top-left scan)
         let placed = false;
         for (let row = 0; row < maxRows - rowSpan + 1; row++) {
@@ -279,23 +308,23 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
               }
               if (!canPlace) break;
             }
-            
+
             if (canPlace) {
               // Place the item
               const x = col * (unitWidth + gap);
               const y = row * (unitHeight + gap);
               const width = colSpan * unitWidth + (colSpan - 1) * gap;
               const height = rowSpan * unitHeight + (rowSpan - 1) * gap;
-              
+
               newPositions.push({ x, y, width, height, colSpan, rowSpan, item });
-              
+
               // Mark cells as occupied
               for (let r = row; r < row + rowSpan; r++) {
                 for (let c = col; c < col + colSpan; c++) {
                   occupied[r][c] = true;
                 }
               }
-              
+
               placed = true;
               break;
             }
@@ -303,16 +332,16 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
           if (placed) break;
         }
       });
-      
+
       // No gap filling - just use the regular items
       const allPositions = newPositions;
-      
+
       // Calculate container height
       let maxY = 0;
       allPositions.forEach(pos => {
         maxY = Math.max(maxY, pos.y + pos.height);
       });
-      
+
       // Only update if positions actually changed
       setPositions(prev => {
         if (prev.length !== allPositions.length) return allPositions;
@@ -323,7 +352,7 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
         });
         return changed ? allPositions : prev;
       });
-      
+
       setContainerHeight(prev => prev === maxY ? prev : maxY);
     };
 
@@ -343,7 +372,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   const fetchLimit = limit ?? 1000;
   const previousUrlRef = useRef<string | null>(null);
   const { token: authToken, user } = useAuth();
-  
+
   // Callback ref to measure width when element is mounted
   const containerRefCallback = useCallback((node: HTMLDivElement | null) => {
     if (node) {
@@ -351,17 +380,17 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       setContainerWidth(node.offsetWidth);
     }
   }, []);
-  
+
   // Fetch all posts from database (only when category/directory changes)
   useEffect(() => {
     const loadAllFeedItems = async () => {
       console.log('🚀 Starting to load all feed items...', { useDatabase, category, directory });
-      
+
       setIsLoading(true);
-      
+
       try {
         let items: FeedItem[];
-        
+
         if (useDatabase) {
           // Fetch posts from database (optionally filtered by category)
           const posts = await fetchPostsFromDatabase({ category, limit: fetchLimit });
@@ -373,7 +402,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           items = await generateFeedItems(directory, 'all');
           console.log('✅ All feed items loaded from static images:', items.length, 'items');
         }
-        
+
         setAllFeedItems(items);
       } catch (error) {
         console.error('❌ Error loading feed items:', error);
@@ -383,36 +412,40 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
         setIsLoading(false);
       }
     };
-    
+
     loadAllFeedItems();
   }, [directory, category ?? '', useDatabase ?? false, fetchLimit]); // Refetch when inputs change
-  
+
   // Filter feed items locally based on activeAlbum
   useEffect(() => {
     if (allFeedItems.length === 0) {
       setFeedItems([]);
       return;
     }
-    
+
     // Debug: Log all album values
     const uniqueAlbums = [...new Set(allFeedItems.map(item => item.album))];
     console.log(`[Feed] All unique albums in feed items:`, uniqueAlbums);
     console.log(`[Feed] Filtering - activeAlbum: "${activeAlbum}" (type: ${typeof activeAlbum}), activeTag: "${activeTag}"`);
-    
+
     // Filter locally from allFeedItems by album and tag
     let filtered = allFeedItems;
-    
+
     // Filter by album
     if (activeAlbum !== 'all') {
-      filtered = filtered.filter(item => {
-        const matches = item.album === activeAlbum;
-        if (!matches) {
-          console.log(`[Feed] Item "${item.title}" album "${item.album}" does not match "${activeAlbum}"`);
-        }
-        return matches;
-      });
+      if (activeAlbum === 'favorites') {
+        filtered = filtered.filter(item => item.isFavorite);
+      } else {
+        filtered = filtered.filter(item => {
+          const matches = item.album === activeAlbum;
+          if (!matches) {
+            console.log(`[Feed] Item "${item.title}" album "${item.album}" does not match "${activeAlbum}"`);
+          }
+          return matches;
+        });
+      }
     }
-    
+
     // Filter by tag
     if (activeTag && activeTag !== '') {
       filtered = filtered.filter(item => {
@@ -423,12 +456,12 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
         return hasTag;
       });
     }
-    
+
     console.log(`[Feed] Filtering result - activeAlbum: ${activeAlbum}, activeTag: ${activeTag}, showing ${filtered.length} of ${allFeedItems.length} items`);
     console.log(`[Feed] Filtered items:`, filtered.map(item => ({ title: item.title, album: item.album, tags: item.tags })));
     setFeedItems(filtered);
   }, [activeAlbum, activeTag, allFeedItems]);
-  
+
   const { positions, containerHeight } = use2DPacking(
     containerWidth > 0 ? feedItems : [],
     containerWidth
@@ -468,7 +501,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       previousUrlRef.current = null;
     }
   };
-  
+
   const handleDeletePost = useCallback(async (postId: string) => {
     if (!authToken) {
       console.warn('[Feed] Attempted to delete post without auth token.');
@@ -477,10 +510,10 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     try {
       await deletePost(postId, authToken);
       console.log('[Feed] Post deleted successfully');
-      
+
       // Remove from allFeedItems
       setAllFeedItems(prev => prev.filter(item => item.postId !== postId));
-      
+
       // Close modal
       setIsModalOpen(false);
       setSelectedImage(null);
@@ -514,39 +547,39 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       <div className="w-full px-4 py-8">
 
         {/* Smart 2D Packing Grid Layout */}
-        <div 
+        <div
           ref={containerRefCallback}
           className="relative w-full"
           style={{ height: containerHeight }}
         >
-                  {positions.map((position, index) => {
-                    const item = position.item;
-                    if (!item) return null;
+          {positions.map((position, index) => {
+            const item = position.item;
+            if (!item) return null;
 
-                    return (
-                      <motion.div
-                        key={item.id}
-                        className="absolute cursor-pointer"
-                        style={{
-                          left: position.x,
-                          top: position.y,
-                          width: position.width,
-                          height: position.height,
-                        }}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.3, delay: index * 0.02, ease: "easeOut" }}
-                        onClick={() => handleImageClick(item)}
-                        whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
-                        whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
-                      >
-                        <ImageTile item={item} index={index} />
-                      </motion.div>
-                    );
-                  })}
+            return (
+              <motion.div
+                key={item.id}
+                className="absolute cursor-pointer"
+                style={{
+                  left: position.x,
+                  top: position.y,
+                  width: position.width,
+                  height: position.height,
+                }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.02, ease: "easeOut" }}
+                onClick={() => handleImageClick(item)}
+                whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
+                whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
+              >
+                <ImageTile item={item} index={index} />
+              </motion.div>
+            );
+          })}
         </div>
       </div>
-      
+
       {/* Image Modal */}
       {selectedImage && (
         <ImageModal
@@ -566,16 +599,18 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           isText={selectedImage.isText}
           price={selectedImage.price}
           galleryUrls={selectedImage.galleryUrls}
+          isActive={selectedImage.isActive}
+          isFavorite={selectedImage.isFavorite}
           onDelete={useDatabase && authToken ? handleDeletePost : undefined}
           canEdit={Boolean(authToken && user)}
           post={
             selectedImage.rawPost
               ? {
-                  content_url: selectedImage.rawPost.content_url,
-                  thumbnail_url: selectedImage.rawPost.thumbnail_url,
-                  splash_image_url: selectedImage.rawPost.splash_image_url,
-                  gallery_urls: selectedImage.rawPost.gallery_urls ?? [],
-                }
+                content_url: selectedImage.rawPost.content_url,
+                thumbnail_url: selectedImage.rawPost.thumbnail_url,
+                splash_image_url: selectedImage.rawPost.splash_image_url,
+                gallery_urls: selectedImage.rawPost.gallery_urls ?? [],
+              }
               : undefined
           }
         />

@@ -69,15 +69,15 @@ interface SubpagesContainerProps {
 }
 
 export default function SubpagesContainer({
-  className = 'px-2 py-2 -mt-16',
+  className = 'md:px-2 md:py-2 md:-mt-16',
 }: SubpagesContainerProps) {
   return (
     <div className={className}>
       <div
-        className="rounded-2xl p-3 backdrop-blur-sm"
+        className="rounded-2xl p-1 md:p-3 backdrop-blur-sm"
         style={{ backgroundColor: 'rgba(255, 255, 255, 0.175)' }}
       >
-        <div className="space-y-1">
+        <div className="flex flex-row md:flex-col gap-1 md:gap-0 md:space-y-1">
           {subpages.map((item, index) => (
             <NavigationLink
               key={item.id}

@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Star } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Post } from '@/lib/api';
+import { type Post, updatePost } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ interface ImageModalProps {
   galleryUrls?: string[];
   canEdit?: boolean;
   post?: Pick<Post, 'content_url' | 'thumbnail_url' | 'splash_image_url' | 'gallery_urls'>;
+  isActive?: boolean;
+  isFavorite?: boolean;
 }
 
 export default function ImageModal({
@@ -50,10 +53,15 @@ export default function ImageModal({
   galleryUrls,
   canEdit = false,
   post,
+  isActive,
+  isFavorite: initialIsFavorite = false,
 }: ImageModalProps) {
   const image = rawImage ?? '';
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const { token: authToken } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const previousScrollRef = useRef(0);
   const [mounted, setMounted] = useState(false);
@@ -113,6 +121,17 @@ export default function ImageModal({
   };
 
   const fullscreenImage = useMemo(() => {
+    // If we are viewing the main image (index 0), try to find a high-res source first
+    if (activeImageIndex === 0) {
+      const highResCandidates = normalizeCandidates(
+        post?.content_url,
+        contentUrl,
+        post?.splash_image_url
+      );
+      const highRes = highResCandidates.find(isImageUrl);
+      if (highRes) return highRes;
+    }
+
     const candidates = normalizeCandidates(
       mergedGallerySources[activeImageIndex],
       post?.gallery_urls?.[activeImageIndex],
@@ -147,7 +166,7 @@ export default function ImageModal({
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(href)) {
       return href;
     }
-    return `https://${href.replace(/^\/+/,'')}`;
+    return `https://${href.replace(/^\/+/, '')}`;
   };
 
   const markdownComponents = useMemo(() => ({
@@ -188,7 +207,7 @@ export default function ImageModal({
       };
     }
   }, [isOpen]);
-  
+
   const handleImageClick = () => {
     if (isAudio || (contentUrl && (category === 'projects' || category === 'bio')) || isText) {
       return;
@@ -196,18 +215,18 @@ export default function ImageModal({
     if (!fullscreenImage) return;
     setIsFullscreen(true);
   };
-  
+
   const handleCloseFullscreen = () => {
     setIsFullscreen(false);
   };
-  
+
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
   };
-  
+
   const handleDeleteConfirm = async () => {
     if (!postId || !onDelete) return;
-    
+
     setIsDeleting(true);
     try {
       await onDelete(postId);
@@ -218,9 +237,29 @@ export default function ImageModal({
       setIsDeleting(false);
     }
   };
-  
+
   const handleDeleteCancel = () => {
     setShowDeleteConfirm(false);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!postId || !authToken || isTogglingFavorite) return;
+
+    setIsTogglingFavorite(true);
+    try {
+      const newStatus = !isFavorite;
+      // Optimistic update
+      setIsFavorite(newStatus);
+
+      await updatePost(postId, { is_favorite: newStatus }, authToken);
+      console.log('Favorite status updated:', newStatus);
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      // Revert on error
+      setIsFavorite(!isFavorite);
+    } finally {
+      setIsTogglingFavorite(false);
+    }
   };
 
   if (!mounted) return null;
@@ -238,7 +277,7 @@ export default function ImageModal({
             transition={{ duration: 0.3, ease: "easeOut" }}
             onClick={onClose}
           />
-          
+
           {/* Modal Content */}
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
@@ -252,11 +291,32 @@ export default function ImageModal({
               <div className="flex items-center justify-between p-6 border-b border-white/20">
                 <h2 className="text-2xl font-bold text-white">{title}</h2>
                 <div className="flex items-center gap-2">
+                  {isActive && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full mr-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
+                      <span className="text-xs font-medium text-green-400 tracking-wide uppercase">Active Project</span>
+                    </div>
+                  )}
+                  {canEdit && postId && (
+                    <button
+                      onClick={handleToggleFavorite}
+                      disabled={isTogglingFavorite}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-yellow-500/20 rounded-lg transition-colors backdrop-blur-sm disabled:opacity-50 group"
+                      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      <Star
+                        className={`w-5 h-5 transition-colors ${isFavorite
+                          ? "text-yellow-400 fill-yellow-400"
+                          : "text-white group-hover:text-yellow-400"
+                          }`}
+                      />
+                    </button>
+                  )}
                   {canEdit && postId && onDelete && (
                     <button
                       onClick={handleDeleteClick}
                       disabled={isDeleting}
-                      className="p-2 hover:bg-red-500/20 rounded-lg transition-colors backdrop-blur-sm disabled:opacity-50"
+                      className="w-10 h-10 flex items-center justify-center hover:bg-red-500/20 rounded-lg transition-colors backdrop-blur-sm disabled:opacity-50"
                       title="Delete post"
                     >
                       <Trash2 className="w-5 h-5 text-white" />
@@ -264,13 +324,13 @@ export default function ImageModal({
                   )}
                   <button
                     onClick={onClose}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors backdrop-blur-sm"
+                    className="w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors backdrop-blur-sm"
                   >
-                    <X className="w-6 h-6 text-white" />
+                    <X className="w-5 h-5 text-white" />
                   </button>
                 </div>
               </div>
-              
+
               {/* Content */}
               {isProject || isBio ? (
                 <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t lg:border-t-0">
@@ -343,9 +403,8 @@ export default function ImageModal({
                             key={`${url}-${index}`}
                             type="button"
                             onClick={() => setActiveImageIndex(index)}
-                            className={`relative flex-shrink-0 w-16 h-16 rounded-lg border ${
-                              index === activeImageIndex ? 'border-white' : 'border-white/20'
-                            } overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors`}
+                            className={`relative flex-shrink-0 w-16 h-16 rounded-lg border ${index === activeImageIndex ? 'border-white' : 'border-white/20'
+                              } overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors`}
                           >
                             <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
                           </button>
@@ -427,7 +486,7 @@ export default function ImageModal({
                   </div>
                 </div>
               )}
-              
+
               {/* Delete Confirmation Dialog */}
               {showDeleteConfirm && (
                 <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-10 rounded-2xl">
@@ -457,7 +516,7 @@ export default function ImageModal({
               )}
             </div>
           </motion.div>
-          
+
           {/* Fullscreen Image Overlay */}
           <AnimatePresence>
             {isFullscreen && !isProject && !isAudio && fullscreenImage && (
