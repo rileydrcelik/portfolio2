@@ -53,7 +53,10 @@ export default function PostModalClient({ post, fallbackHref }: PostModalClientP
         isText={Boolean(looksLikeText && !imageCandidate)}
         price={post.price ?? null}
         galleryUrls={post.gallery_urls ?? undefined}
-        post={post}
+        post={{
+          ...post,
+          gallery_urls: post.gallery_urls ?? undefined,
+        }}
       />
     </div>
   );
