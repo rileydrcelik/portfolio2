@@ -45,6 +45,7 @@ async def get_posts(
     album: Optional[str] = None,
     tag: Optional[str] = None,
     is_major: Optional[bool] = None,
+    is_favorite: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
     db: Session = Depends(get_db)
@@ -60,6 +61,8 @@ async def get_posts(
         query = query.filter(Post.tags.contains([tag]))
     if is_major is not None:
         query = query.filter(Post.is_major == is_major)
+    if is_favorite is not None:
+        query = query.filter(Post.is_favorite == is_favorite)
     
     try:
         posts = query.order_by(desc(Post.date)).limit(limit).offset(offset).all()

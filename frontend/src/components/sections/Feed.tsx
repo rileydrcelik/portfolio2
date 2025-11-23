@@ -396,13 +396,19 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
         if (useDatabase) {
           // Fetch posts from database with filters
-          const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number } = {
+          const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number; is_favorite?: boolean } = {
             category,
             limit: fetchLimit,
             offset: 0
           };
 
-          if (activeAlbum !== 'all') params.album = activeAlbum;
+          if (activeAlbum !== 'all') {
+            if (activeAlbum === 'favorites') {
+              params.is_favorite = true;
+            } else {
+              params.album = activeAlbum;
+            }
+          }
           if (activeTag) params.tag = activeTag;
 
           const posts = await getPosts(params);
@@ -434,13 +440,19 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
     setIsFetchingMore(true);
     try {
-      const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number } = {
+      const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number; is_favorite?: boolean } = {
         category,
         limit: fetchLimit,
         offset: feedItems.length
       };
 
-      if (activeAlbum !== 'all') params.album = activeAlbum;
+      if (activeAlbum !== 'all') {
+        if (activeAlbum === 'favorites') {
+          params.is_favorite = true;
+        } else {
+          params.album = activeAlbum;
+        }
+      }
       if (activeTag) params.tag = activeTag;
 
       const posts = await getPosts(params);

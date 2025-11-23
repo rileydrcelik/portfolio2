@@ -97,6 +97,7 @@ export async function getPosts(params?: {
   limit?: number;
   offset?: number;
   is_major?: boolean;
+  is_favorite?: boolean;
   tag?: string;
 }): Promise<Post[]> {
   const queryParams = new URLSearchParams();
@@ -106,6 +107,7 @@ export async function getPosts(params?: {
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.offset) queryParams.append('offset', params.offset.toString());
   if (typeof params?.is_major === 'boolean') queryParams.append('is_major', params.is_major ? 'true' : 'false');
+  if (typeof params?.is_favorite === 'boolean') queryParams.append('is_favorite', params.is_favorite ? 'true' : 'false');
 
   const response = await fetch(`${POSTS_ENDPOINT}?${queryParams.toString()}`);
   if (!response.ok) {
