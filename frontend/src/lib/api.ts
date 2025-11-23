@@ -97,10 +97,12 @@ export async function getPosts(params?: {
   limit?: number;
   offset?: number;
   is_major?: boolean;
+  tag?: string;
 }): Promise<Post[]> {
   const queryParams = new URLSearchParams();
   if (params?.category) queryParams.append('category', params.category);
   if (params?.album) queryParams.append('album', params.album);
+  if (params?.tag) queryParams.append('tag', params.tag);
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.offset) queryParams.append('offset', params.offset.toString());
   if (typeof params?.is_major === 'boolean') queryParams.append('is_major', params.is_major ? 'true' : 'false');

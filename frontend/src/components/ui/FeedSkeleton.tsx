@@ -32,6 +32,14 @@ const TILE_SHAPES = {
   'single-column': { colSpan: 1, rowSpan: 2 },
 };
 
+// Mobile Grid System (2 columns)
+const MOBILE_TILE_SHAPES = {
+  // Square items (1x1) - for square, landscape, and major items
+  'square': { colSpan: 1, rowSpan: 1 },
+  // Tall items (1x2) - for portrait items
+  'tall': { colSpan: 1, rowSpan: 2 },
+} as const;
+
 const TILE_SHAPE_KEYS = Object.keys(TILE_SHAPES) as Array<keyof typeof TILE_SHAPES>;
 
 // 2D Packing Algorithm (same as Feed component)
@@ -41,25 +49,41 @@ const use2DPacking = (items: SkeletonItem[], containerWidth: number, gap: number
 
   useEffect(() => {
     const calculatePositions = () => {
-        const gridUnits = 9;
+      const isMobile = containerWidth < 768;
+      const gridUnits = isMobile ? 2 : 9;
       const unitSize = (containerWidth - (gridUnits - 1) * gap) / gridUnits;
-      
+
       const allPositions: Position[] = [];
       const occupiedCells: boolean[][] = [];
-      
+
       // Initialize occupied cells grid
       for (let i = 0; i < 100; i++) {
         occupiedCells[i] = new Array(100).fill(false);
       }
 
       items.forEach((item) => {
-        const shape = TILE_SHAPES[TILE_SHAPE_KEYS[item.id % TILE_SHAPE_KEYS.length]];
-        const colSpan = shape.colSpan;
-        const rowSpan = shape.rowSpan;
-        
+        let colSpan, rowSpan;
+
+        if (isMobile) {
+          // Map original shapes to mobile shapes
+          const originalShapeKey = TILE_SHAPE_KEYS[item.id % TILE_SHAPE_KEYS.length];
+          // If it's portrait or apparel (tall items), make it tall (1x2), otherwise square (1x1)
+          if (originalShapeKey.includes('portrait') || originalShapeKey === 'apparel' || originalShapeKey === 'single-column') {
+            colSpan = MOBILE_TILE_SHAPES.tall.colSpan;
+            rowSpan = MOBILE_TILE_SHAPES.tall.rowSpan;
+          } else {
+            colSpan = MOBILE_TILE_SHAPES.square.colSpan;
+            rowSpan = MOBILE_TILE_SHAPES.square.rowSpan;
+          }
+        } else {
+          const shape = TILE_SHAPES[TILE_SHAPE_KEYS[item.id % TILE_SHAPE_KEYS.length]];
+          colSpan = shape.colSpan;
+          rowSpan = shape.rowSpan;
+        }
+
         const width = colSpan * unitSize + (colSpan - 1) * gap;
         const height = rowSpan * unitSize + (rowSpan - 1) * gap;
-        
+
         // Find the first available position
         let placed = false;
         for (let row = 0; row < 100 - rowSpan + 1 && !placed; row++) {
@@ -73,12 +97,12 @@ const use2DPacking = (items: SkeletonItem[], containerWidth: number, gap: number
                 }
               }
             }
-            
+
             if (canPlace) {
               // Place the item
               const x = col * (unitSize + gap);
               const y = row * (unitSize + gap);
-              
+
               allPositions.push({
                 x,
                 y,
@@ -86,7 +110,7 @@ const use2DPacking = (items: SkeletonItem[], containerWidth: number, gap: number
                 height,
                 item,
               });
-              
+
               // Mark cells as occupied
               for (let r = row; r < row + rowSpan; r++) {
                 for (let c = col; c < col + colSpan; c++) {
@@ -94,7 +118,7 @@ const use2DPacking = (items: SkeletonItem[], containerWidth: number, gap: number
                   occupiedCells[r][c] = true;
                 }
               }
-              
+
               placed = true;
             }
           }
@@ -102,7 +126,7 @@ const use2DPacking = (items: SkeletonItem[], containerWidth: number, gap: number
       });
 
       setPositions(allPositions);
-      
+
       // Calculate container height
       let maxY = 0;
       allPositions.forEach(pos => {
@@ -120,16 +144,16 @@ const use2DPacking = (items: SkeletonItem[], containerWidth: number, gap: number
 export default function FeedSkeleton({ count = 20 }: FeedSkeletonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
-  
+
   // Generate skeleton items with varying tile shapes (memoized to prevent infinite re-renders)
-  const skeletonItems: SkeletonItem[] = useMemo(() => 
+  const skeletonItems: SkeletonItem[] = useMemo(() =>
     Array.from({ length: count }, (_, i) => ({
       id: i,
       colSpan: TILE_SHAPES[TILE_SHAPE_KEYS[i % TILE_SHAPE_KEYS.length]].colSpan,
       rowSpan: TILE_SHAPES[TILE_SHAPE_KEYS[i % TILE_SHAPE_KEYS.length]].rowSpan,
     })), [count]
   );
-  
+
   const { positions, containerHeight } = use2DPacking(skeletonItems, containerWidth);
 
   useEffect(() => {
@@ -149,7 +173,7 @@ export default function FeedSkeleton({ count = 20 }: FeedSkeletonProps) {
   return (
     <div className="min-h-screen bg-black">
       <div className="px-4 py-8">
-        <div 
+        <div
           ref={containerRef}
           className="relative"
           style={{ height: containerHeight }}

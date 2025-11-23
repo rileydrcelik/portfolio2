@@ -43,6 +43,7 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 async def get_posts(
     category: Optional[str] = None,
     album: Optional[str] = None,
+    tag: Optional[str] = None,
     is_major: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
@@ -55,6 +56,8 @@ async def get_posts(
         query = query.filter(Post.category == category)
     if album:
         query = query.filter(Post.album == album)
+    if tag:
+        query = query.filter(Post.tags.contains([tag]))
     if is_major is not None:
         query = query.filter(Post.is_major == is_major)
     

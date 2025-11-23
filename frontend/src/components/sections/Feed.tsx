@@ -368,8 +368,10 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [allFeedItems, setAllFeedItems] = useState<FeedItem[]>([]); // Store all items (unfiltered)
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]); // Filtered items to display
+  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const fetchLimit = limit ?? 1000;
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const fetchLimit = limit ?? 50; // Default to 50 for pagination
   const previousUrlRef = useRef<string | null>(null);
   const { token: authToken, user } = useAuth();
 
@@ -381,86 +383,79 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     }
   }, []);
 
-  // Fetch all posts from database (only when category/directory changes)
+  // Fetch posts from database (paginated)
   useEffect(() => {
-    const loadAllFeedItems = async () => {
-      console.log('🚀 Starting to load all feed items...', { useDatabase, category, directory });
+    const loadFeedItems = async () => {
+      console.log('🚀 Loading feed items...', { useDatabase, category, directory, activeAlbum, activeTag });
 
       setIsLoading(true);
+      setFeedItems([]); // Reset items on filter change
 
       try {
         let items: FeedItem[];
 
         if (useDatabase) {
-          // Fetch posts from database (optionally filtered by category)
-          const posts = await fetchPostsFromDatabase({ category, limit: fetchLimit });
-          // Convert posts to feed items
+          // Fetch posts from database with filters
+          const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number } = {
+            category,
+            limit: fetchLimit,
+            offset: 0
+          };
+
+          if (activeAlbum !== 'all') params.album = activeAlbum;
+          if (activeTag) params.tag = activeTag;
+
+          const posts = await getPosts(params);
           items = await convertPostsToFeedItems(posts);
           console.log('✅ Feed items loaded from database:', items.length, 'items');
+
+          setHasMore(items.length === fetchLimit);
         } else {
           // Use static images - fetch all (no album filtering)
-          items = await generateFeedItems(directory, 'all');
+          items = await generateFeedItems(directory, activeAlbum);
           console.log('✅ All feed items loaded from static images:', items.length, 'items');
+          setHasMore(false); // Static images are all loaded at once
         }
 
-        setAllFeedItems(items);
+        setFeedItems(items);
       } catch (error) {
         console.error('❌ Error loading feed items:', error);
-        setAllFeedItems([]);
+        setFeedItems([]);
       } finally {
-        console.log('🏁 Finished loading all feed items, setting isLoading to false');
         setIsLoading(false);
       }
     };
 
-    loadAllFeedItems();
-  }, [directory, category ?? '', useDatabase ?? false, fetchLimit]); // Refetch when inputs change
+    loadFeedItems();
+  }, [directory, category, useDatabase, activeAlbum, activeTag, fetchLimit]);
 
-  // Filter feed items locally based on activeAlbum
-  useEffect(() => {
-    if (allFeedItems.length === 0) {
-      setFeedItems([]);
-      return;
+  const handleLoadMore = async () => {
+    if (!useDatabase || isLoading || isFetchingMore) return;
+
+    setIsFetchingMore(true);
+    try {
+      const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number } = {
+        category,
+        limit: fetchLimit,
+        offset: feedItems.length
+      };
+
+      if (activeAlbum !== 'all') params.album = activeAlbum;
+      if (activeTag) params.tag = activeTag;
+
+      const posts = await getPosts(params);
+      const newItems = await convertPostsToFeedItems(posts);
+
+      setFeedItems(prev => [...prev, ...newItems]);
+      setHasMore(newItems.length === fetchLimit);
+    } catch (error) {
+      console.error('❌ Error loading more items:', error);
+    } finally {
+      setIsFetchingMore(false);
     }
+  };
 
-    // Debug: Log all album values
-    const uniqueAlbums = [...new Set(allFeedItems.map(item => item.album))];
-    console.log(`[Feed] All unique albums in feed items:`, uniqueAlbums);
-    console.log(`[Feed] Filtering - activeAlbum: "${activeAlbum}" (type: ${typeof activeAlbum}), activeTag: "${activeTag}"`);
-
-    // Filter locally from allFeedItems by album and tag
-    let filtered = allFeedItems;
-
-    // Filter by album
-    if (activeAlbum !== 'all') {
-      if (activeAlbum === 'favorites') {
-        filtered = filtered.filter(item => item.isFavorite);
-      } else {
-        filtered = filtered.filter(item => {
-          const matches = item.album === activeAlbum;
-          if (!matches) {
-            console.log(`[Feed] Item "${item.title}" album "${item.album}" does not match "${activeAlbum}"`);
-          }
-          return matches;
-        });
-      }
-    }
-
-    // Filter by tag
-    if (activeTag && activeTag !== '') {
-      filtered = filtered.filter(item => {
-        const hasTag = item.tags && item.tags.includes(activeTag);
-        if (!hasTag) {
-          console.log(`[Feed] Item "${item.title}" does not have tag "${activeTag}"`);
-        }
-        return hasTag;
-      });
-    }
-
-    console.log(`[Feed] Filtering result - activeAlbum: ${activeAlbum}, activeTag: ${activeTag}, showing ${filtered.length} of ${allFeedItems.length} items`);
-    console.log(`[Feed] Filtered items:`, filtered.map(item => ({ title: item.title, album: item.album, tags: item.tags })));
-    setFeedItems(filtered);
-  }, [activeAlbum, activeTag, allFeedItems]);
+  // Removed client-side filtering logic
 
   const { positions, containerHeight } = use2DPacking(
     containerWidth > 0 ? feedItems : [],
@@ -566,9 +561,10 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
                   width: position.width,
                   height: position.height,
                 }}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.02, ease: "easeOut" }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
                 onClick={() => handleImageClick(item)}
                 whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
                 whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
@@ -580,41 +576,56 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
         </div>
       </div>
 
-      {/* Image Modal */}
-      {selectedImage && (
-        <ImageModal
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          image={selectedImage.image}
-          title={selectedImage.title}
-          description={selectedImage.description}
-          date={selectedImage.date}
-          tags={selectedImage.tags}
-          postId={selectedImage.postId}
-          contentUrl={selectedImage.contentUrl}
-          isAudio={selectedImage.isAudio}
-          slug={selectedImage.slug}
-          category={selectedImage.category}
-          album={selectedImage.album}
-          isText={selectedImage.isText}
-          price={selectedImage.price}
-          galleryUrls={selectedImage.galleryUrls}
-          isActive={selectedImage.isActive}
-          isFavorite={selectedImage.isFavorite}
-          onDelete={useDatabase && authToken ? handleDeletePost : undefined}
-          canEdit={Boolean(authToken && user)}
-          post={
-            selectedImage.rawPost
-              ? {
-                content_url: selectedImage.rawPost.content_url,
-                thumbnail_url: selectedImage.rawPost.thumbnail_url,
-                splash_image_url: selectedImage.rawPost.splash_image_url,
-                gallery_urls: selectedImage.rawPost.gallery_urls ?? [],
-              }
-              : undefined
-          }
-        />
+      {/* Load More Button */}
+      {hasMore && (
+        <div className="flex justify-center mt-12 mb-8">
+          <button
+            onClick={handleLoadMore}
+            disabled={isFetchingMore}
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors duration-200 backdrop-blur-sm border border-white/10 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isFetchingMore ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
       )}
-    </div>
+
+      {/* Image Modal */}
+      {
+        selectedImage && (
+          <ImageModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            image={selectedImage.image}
+            title={selectedImage.title}
+            description={selectedImage.description}
+            date={selectedImage.date}
+            tags={selectedImage.tags}
+            postId={selectedImage.postId}
+            contentUrl={selectedImage.contentUrl}
+            isAudio={selectedImage.isAudio}
+            slug={selectedImage.slug}
+            category={selectedImage.category}
+            album={selectedImage.album}
+            isText={selectedImage.isText}
+            price={selectedImage.price}
+            galleryUrls={selectedImage.galleryUrls}
+            isActive={selectedImage.isActive}
+            isFavorite={selectedImage.isFavorite}
+            onDelete={useDatabase && authToken ? handleDeletePost : undefined}
+            canEdit={Boolean(authToken && user)}
+            post={
+              selectedImage.rawPost
+                ? {
+                  content_url: selectedImage.rawPost.content_url,
+                  thumbnail_url: selectedImage.rawPost.thumbnail_url,
+                  splash_image_url: selectedImage.rawPost.splash_image_url,
+                  gallery_urls: selectedImage.rawPost.gallery_urls ?? [],
+                }
+                : undefined
+            }
+          />
+        )
+      }
+    </div >
   );
 }

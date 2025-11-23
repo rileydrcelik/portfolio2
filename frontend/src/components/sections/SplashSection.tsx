@@ -44,16 +44,35 @@ export default function SplashSection() {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        setIsLoadingPost(true);
+        // 1. Check cache first for instant load
+        const cached = localStorage.getItem('splash_featured_post');
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            setFeaturedPost(parsed);
+            setIsLoadingPost(false); // Show cached content immediately
+          } catch (e) {
+            console.error('[SplashSection] Failed to parse cached post:', e);
+          }
+        }
+
+        // 2. Fetch fresh data in background
         const posts = await getPosts({ is_major: true, limit: 1 });
+
         if (posts.length > 0) {
-          setFeaturedPost(posts[0]);
+          const newPost = posts[0];
+          setFeaturedPost(newPost);
+          // Update cache
+          localStorage.setItem('splash_featured_post', JSON.stringify(newPost));
         } else {
-          setFeaturedPost(null);
+          if (!cached) setFeaturedPost(null);
         }
       } catch (error) {
         console.error('[SplashSection] Failed to fetch featured post:', error);
-        setFeaturedPost(null);
+        // Keep showing cached version if available, otherwise null
+        if (!localStorage.getItem('splash_featured_post')) {
+          setFeaturedPost(null);
+        }
       } finally {
         setIsLoadingPost(false);
       }
