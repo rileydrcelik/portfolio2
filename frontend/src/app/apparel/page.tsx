@@ -1,13 +1,5 @@
-import SectionWithFeed from '@/components/sections/SectionWithFeed';
+import { redirect } from 'next/navigation';
 
 export default function ApparelPage() {
-  return (
-    <SectionWithFeed
-      title="Apparel"
-      directory="apparel_placeholders"
-      category="apparel"
-      categorySlug="apparel"
-      useDatabase={true}
-    />
-  );
+  redirect('/shop');
 }

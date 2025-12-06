@@ -275,9 +275,9 @@ export default function SplashSection() {
               offset={[0, 20]}
               bg="transparent"
               p={0}
-              label={<GlassTooltipLabel text="Apparel" />}
+              label={<GlassTooltipLabel text="Shop" />}
             >
-              <Link href="/apparel"><ShoppingBagIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+              <Link href="/shop"><ShoppingBagIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
             </Tooltip>
             <Tooltip
               placement="right"

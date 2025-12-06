@@ -31,7 +31,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     slug: 'projects',
   },
   apparel: {
-    title: 'Apparel',
+    title: 'Shop',
     directory: 'apparel_placeholders',
     slug: 'apparel',
   },
