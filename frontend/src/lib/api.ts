@@ -41,6 +41,11 @@ const buildUrl = (host: string): string => {
     return `${protocol}${host}`;
   }
 
+  // On server, check for localhost
+  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) {
+    return `http://${host}`;
+  }
+
   // On server, default to https
   return `https://${host}`;
 };

@@ -51,7 +51,7 @@ export default function LayoutClient({ children }: LayoutClientProps) {
   return (
     <div className="min-h-screen bg-black flex flex-col md:flex-row">
       {/* Sidebar - Bottom on mobile, Left on desktop */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:relative md:w-16 md:h-screen md:flex-shrink-0">
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:relative md:w-16 md:flex-shrink-0">
         <div className="h-full w-full md:sticky md:top-0 md:h-screen">
           {showSidebar && <SideBar />}
         </div>

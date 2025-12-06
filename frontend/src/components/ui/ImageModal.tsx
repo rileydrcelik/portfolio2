@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Star } from 'lucide-react';
+import { X, Trash2, Star, Pencil } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { type Post, updatePost } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
+import EditPostModal from './EditPostModal';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ interface ImageModalProps {
   post?: Pick<Post, 'content_url' | 'thumbnail_url' | 'splash_image_url' | 'gallery_urls'>;
   isActive?: boolean;
   isFavorite?: boolean;
+  onUpdate?: (updatedPost: Post) => void;
 }
 
 export default function ImageModal({
@@ -55,12 +57,14 @@ export default function ImageModal({
   post,
   isActive,
   isFavorite: initialIsFavorite = false,
+  onUpdate,
 }: ImageModalProps) {
   const image = rawImage ?? '';
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { token: authToken } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const previousScrollRef = useRef(0);
@@ -312,6 +316,15 @@ export default function ImageModal({
                       />
                     </button>
                   )}
+                  {canEdit && postId && onUpdate && (
+                    <button
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-blue-500/20 rounded-lg transition-colors backdrop-blur-sm group"
+                      title="Edit post"
+                    >
+                      <Pencil className="w-5 h-5 text-white group-hover:text-blue-400 decoration-white" />
+                    </button>
+                  )}
                   {canEdit && postId && onDelete && (
                     <button
                       onClick={handleDeleteClick}
@@ -554,6 +567,31 @@ export default function ImageModal({
               </motion.div>
             )}
           </AnimatePresence>
+          {/* Edit Modal */}
+          {postId && isEditModalOpen && (
+            <EditPostModal
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              post={{
+                id: postId,
+                title,
+                description,
+                category: category || '',
+                album: album || '',
+                tags: tags || [],
+                price,
+                isActive,
+                isMajor: post?.splash_image_url === post?.content_url && category !== 'bio', // inferred roughly
+                contentUrl,
+                thumbnailUrl: post?.thumbnail_url,
+                slug,
+              }}
+              onUpdate={(updatedPost) => {
+                if (onUpdate) onUpdate(updatedPost);
+                // The parent (Feed) will update the state, which re-renders ImageModal
+              }}
+            />
+          )}
         </>
       )}
     </AnimatePresence>,

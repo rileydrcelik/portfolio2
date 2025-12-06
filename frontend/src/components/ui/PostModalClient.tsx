@@ -32,7 +32,12 @@ export default function PostModalClient({ post, fallbackHref }: PostModalClientP
     post.thumbnail_url || post.splash_image_url || (looksLikeText ? null : post.content_url);
 
   const handleClose = () => {
-    router.push(fallbackHref);
+    // Check if there is history (length > 1 usually implies we can go back)
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(fallbackHref);
+    }
   };
 
   return (

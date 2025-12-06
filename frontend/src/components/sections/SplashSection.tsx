@@ -113,6 +113,11 @@ export default function SplashSection() {
     return null;
   }, [featuredPost]);
 
+  const postLink = useMemo(() => {
+    if (!featuredPost?.slug || !featuredPost?.category || !featuredPost?.album) return null;
+    return `/${encodeURIComponent(featuredPost.category)}/${encodeURIComponent(featuredPost.album)}/${encodeURIComponent(featuredPost.slug)}`;
+  }, [featuredPost]);
+
   useEffect(() => {
     setImageLoaded(false);
   }, [featuredImageUrl]);
@@ -133,6 +138,17 @@ export default function SplashSection() {
 
   // Scroll indicator fades out faster - starts fading immediately on scroll
   const scrollIndicatorOpacity = windowHeight > 0 ? Math.max(0, Math.min(1, (windowHeight * 0.3 - scrollY) / (windowHeight * 0.3))) : 1;
+
+  // Fallback: If image url is set but loaded state is stuck false for too long, force it.
+  // This handles cases where onLoadingComplete might have missed or race conditions.
+  useEffect(() => {
+    if (featuredImageUrl && !imageLoaded) {
+      const timer = setTimeout(() => {
+        setImageLoaded(true);
+      }, 150); // Short timeout to prevent long blank screen
+      return () => clearTimeout(timer);
+    }
+  }, [featuredImageUrl, imageLoaded]);
 
   return (
     <>
@@ -290,21 +306,40 @@ export default function SplashSection() {
           <div className="absolute inset-0 bg-black" />
           {featuredImageUrl && (
             <motion.div
-              className="absolute inset-0"
+              className="absolute inset-0 pointer-events-auto"
               initial={{ opacity: 0 }}
               animate={{ opacity: imageLoaded ? 1 : 0 }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
             >
-              <Image
-                src={featuredImageUrl}
-                alt={featuredPost?.title ?? 'Splash'}
-                fill
-                className="object-cover pointer-events-none select-none"
-                priority
-                quality={90}
-                draggable={false}
-                onLoadingComplete={() => setImageLoaded(true)}
-              />
+              {postLink ? (
+                <Link href={postLink} className="block relative w-full h-full cursor-pointer">
+                  <Image
+                    src={featuredImageUrl}
+                    alt={featuredPost?.title ?? 'Splash'}
+                    fill
+                    className="object-cover select-none"
+                    priority
+                    quality={90}
+                    draggable={false}
+                    onLoadingComplete={() => {
+                      setImageLoaded(true);
+                    }}
+                  />
+                </Link>
+              ) : (
+                <Image
+                  src={featuredImageUrl}
+                  alt={featuredPost?.title ?? 'Splash'}
+                  fill
+                  className="object-cover select-none"
+                  priority
+                  quality={90}
+                  draggable={false}
+                  onLoadingComplete={() => {
+                    setImageLoaded(true);
+                  }}
+                />
+              )}
             </motion.div>
           )}
 
@@ -325,12 +360,25 @@ export default function SplashSection() {
               willChange: 'opacity'
             }}
           >
-            <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-white mb-1 select-none leading-tight">
-              {featuredPost?.title || 'PICNIC'}
-            </h1>
-            <p className="text-xl md:text-2xl text-white/50 font-serif select-none">
-              {featuredPost?.description || 'short description of the project...'}
-            </p>
+            {postLink ? (
+              <Link href={postLink} className="block group">
+                <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-white mb-1 select-none leading-tight group-hover:text-white/90 transition-colors">
+                  {featuredPost?.title || 'PICNIC'}
+                </h1>
+                <p className="text-xl md:text-2xl text-white/50 font-serif select-none group-hover:text-white/60 transition-colors">
+                  {featuredPost?.description || 'short description of the project...'}
+                </p>
+              </Link>
+            ) : (
+              <>
+                <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-white mb-1 select-none leading-tight">
+                  {featuredPost?.title || 'PICNIC'}
+                </h1>
+                <p className="text-xl md:text-2xl text-white/50 font-serif select-none">
+                  {featuredPost?.description || 'short description of the project...'}
+                </p>
+              </>
+            )}
           </div>
         </div>
 
@@ -352,7 +400,7 @@ export default function SplashSection() {
             <ChevronDownIcon className="w-6 h-6 text-white -mt-4" />
           </motion.div>
         </motion.div>
-      </div>
+      </div >
     </>
   );
 }

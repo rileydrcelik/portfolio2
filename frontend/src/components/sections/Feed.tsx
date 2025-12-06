@@ -517,18 +517,30 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     try {
       await deletePost(postId, authToken);
       console.log('[Feed] Post deleted successfully');
-
-      // Remove from allFeedItems
-      setAllFeedItems(prev => prev.filter(item => item.postId !== postId));
-
-      // Close modal
-      setIsModalOpen(false);
-      setSelectedImage(null);
+      window.location.reload();
     } catch (err) {
       console.error('[Feed] Error deleting post:', err);
       throw err; // Re-throw so ImageModal can handle it
     }
   }, [authToken]);
+
+  const handleUpdatePost = useCallback(async (updatedPost: Post) => {
+    // Convert updated Post to FeedItem format (simplified)
+    const updatedFeedItems = await convertPostsToFeedItems([updatedPost]);
+    if (updatedFeedItems.length === 0) return;
+
+    const newItem = updatedFeedItems[0];
+
+    // Update lists
+    setFeedItems(prev => prev.map(item => item.postId === newItem.postId ? newItem : item));
+    setAllFeedItems(prev => prev.map(item => item.postId === newItem.postId ? newItem : item));
+
+    // Update currently selected image to reflect changes in modal immediately
+    setSelectedImage(newItem);
+
+    console.log('[Feed] Post updated:', newItem.title);
+    window.location.reload();
+  }, []);
 
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -624,6 +636,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
             isActive={selectedImage.isActive}
             isFavorite={selectedImage.isFavorite}
             onDelete={useDatabase && authToken ? handleDeletePost : undefined}
+            onUpdate={useDatabase && authToken ? handleUpdatePost : undefined}
             canEdit={Boolean(authToken && user)}
             post={
               selectedImage.rawPost
