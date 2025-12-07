@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import ImageModal from '@/components/ui/ImageModal';
 
 interface PostModalClientProps {
@@ -22,8 +23,9 @@ interface PostModalClientProps {
   fallbackHref: string;
 }
 
-export default function PostModalClient({ post, fallbackHref }: PostModalClientProps) {
+export default function PostModalClient({ post: initialPost, fallbackHref }: PostModalClientProps) {
   const router = useRouter();
+  const [post, setPost] = useState(initialPost);
   const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(post.content_url);
   const looksLikeText =
     post.category === 'bio' ||
@@ -38,6 +40,13 @@ export default function PostModalClient({ post, fallbackHref }: PostModalClientP
     } else {
       router.push(fallbackHref);
     }
+  };
+
+  const handleUpdate = (updatedPost: any) => {
+    setPost({
+      ...post,
+      ...updatedPost,
+    });
   };
 
   return (
@@ -55,13 +64,16 @@ export default function PostModalClient({ post, fallbackHref }: PostModalClientP
         slug={post.slug}
         category={post.category}
         album={post.album}
-        isText={Boolean(looksLikeText && !imageCandidate)}
+        isText={Boolean(looksLikeText && !imageCandidate && post.category !== 'projects')}
         price={post.price ?? null}
         galleryUrls={post.gallery_urls ?? undefined}
+        postId={post.id}
+        canEdit={true}
         post={{
           ...post,
           gallery_urls: post.gallery_urls ?? undefined,
         }}
+        onUpdate={handleUpdate}
       />
     </div>
   );

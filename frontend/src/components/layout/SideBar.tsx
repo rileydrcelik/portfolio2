@@ -93,7 +93,7 @@ export default function SideBar() {
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 flex flex-row md:flex-col justify-center md:justify-between items-center md:items-stretch gap-4 md:gap-0 md:overflow-y-auto">
+          <div className="flex-1 flex flex-row md:flex-col justify-start md:justify-between items-center md:items-stretch gap-4 md:gap-0 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {/* Top Section - Essentials (Bio, etc.) */}
             <div className="md:px-4 md:pt-2 md:pb-4">
               <div className="flex flex-row md:flex-col gap-1 md:gap-0 md:space-y-1">

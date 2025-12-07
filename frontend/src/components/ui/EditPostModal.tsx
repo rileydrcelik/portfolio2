@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, ChevronDown } from 'lucide-react';
-import { type PostCreate, updatePost, getAlbumsByCategory } from '@/lib/api';
+import { type PostCreate, updatePost, getAlbumsByCategory, uploadImage } from '@/lib/api';
+import MarkdownEditor from './MarkdownEditor';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface EditPostModalProps {
@@ -51,9 +52,24 @@ export default function EditPostModal({
     const [tagInput, setTagInput] = useState('');
     const [albumOptions, setAlbumOptions] = useState<string[]>([]);
     const [isAlbumDropdownOpen, setIsAlbumDropdownOpen] = useState(false);
+    const [articleContent, setArticleContent] = useState(post.contentUrl || '');
 
     const isApparel = formData.category === 'apparel';
     const isProject = formData.category === 'projects';
+
+    const handleEditorImageUpload = async (file: File): Promise<string> => {
+        if (!authToken) {
+            throw new Error('You must be signed in to upload images.');
+        }
+        // Use 'projects' folder for project images, or generic 'art'
+        try {
+            const uploadResult = await uploadImage(file, 'projects', authToken);
+            return uploadResult.url;
+        } catch (err: any) {
+            console.error("Editor image upload failed", err);
+            throw new Error(err.message || "Failed to upload image");
+        }
+    };
 
     useEffect(() => {
         const fetchAlbums = async () => {
@@ -125,6 +141,11 @@ export default function EditPostModal({
         const submitData = { ...formData };
         if (!isApparel) {
             submitData.price = null;
+        }
+
+        // For projects, include the article content as content_url
+        if (isProject) {
+            submitData.content_url = articleContent;
         }
 
         try {
@@ -203,7 +224,6 @@ export default function EditPostModal({
                                         </div>
                                     </div>
 
-                                    {/* Description */}
                                     <div>
                                         <label className="block text-sm font-medium text-white/90 mb-2">Description</label>
                                         <textarea
@@ -214,6 +234,21 @@ export default function EditPostModal({
                                             className="w-full p-3 border border-white/30 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 placeholder-white/50 resize-none"
                                         />
                                     </div>
+
+                                    {/* Article Content - Only for Projects */}
+                                    {isProject && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-white/90 mb-2">Article Content (Markdown)</label>
+                                            <div className="h-[500px] overflow-hidden rounded-2xl border border-white/20">
+                                                <MarkdownEditor
+                                                    value={articleContent}
+                                                    onChange={setArticleContent}
+                                                    onUploadImage={handleEditorImageUpload}
+                                                    placeholder="Write your project details here..."
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>

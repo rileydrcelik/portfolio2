@@ -346,8 +346,8 @@ export default function ImageModal({
 
               {/* Content */}
               {isProject || isBio ? (
-                <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t lg:border-t-0">
-                  <div className="space-y-6">
+                <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t lg:border-t-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="space-y-6 max-w-4xl mx-auto">
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
                       <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{description}</p>
@@ -355,8 +355,8 @@ export default function ImageModal({
 
                     {articleContent && (
                       <div className="space-y-3">
-                        <h3 className="text-lg font-semibold text-white">{isProject ? 'Project Article' : 'Bio Entry'}</h3>
-                        <div className="prose prose-invert prose-headings:font-serif prose-p:text-white/80">
+                        {!isProject && <h3 className="text-lg font-semibold text-white">Bio Entry</h3>}
+                        <div className="prose prose-invert prose-headings:font-sans prose-p:text-white/80">
                           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                             {articleContent}
                           </ReactMarkdown>
