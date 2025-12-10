@@ -62,7 +62,7 @@ export interface Post {
   category: string;
   album: string;
   title: string;
-  description: string;
+  description?: string;
   content_url: string;
   thumbnail_url: string;
   splash_image_url?: string | null;
@@ -81,7 +81,7 @@ export interface PostCreate {
   category: string;
   album: string;
   title: string;
-  description: string;
+  description?: string;
   content_url: string;
   thumbnail_url: string;
   splash_image_url?: string | null;

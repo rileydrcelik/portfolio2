@@ -39,7 +39,7 @@ export default function EditPostModal({
 
     const [formData, setFormData] = useState<Partial<PostCreate>>({
         title: post.title,
-        description: post.description,
+        description: post.description || '',
         category: post.category,
         album: post.album,
         tags: post.tags,

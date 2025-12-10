@@ -10,7 +10,7 @@ class Post(Base):
     category = Column(String(50), nullable=False)
     album = Column(String(100), nullable=False)
     title = Column(String(255), nullable=False)
-    description = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
     content_url = Column(Text, nullable=False)
     thumbnail_url = Column(Text, nullable=False)
     splash_image_url = Column(Text, nullable=True)

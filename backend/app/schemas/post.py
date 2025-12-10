@@ -7,7 +7,7 @@ class PostBase(BaseModel):
     category: str = Field(..., description="Category: art, photo, music, projects, bio, apparel")
     album: str = Field(..., description="Album within category")
     title: str = Field(..., max_length=255)
-    description: str
+    description: Optional[str] = None
     content_url: str = Field(..., description="URL to main content (S3 or base64 data URL)")
     thumbnail_url: str = Field(..., description="URL to thumbnail (S3 or base64 data URL)")
     splash_image_url: Optional[str] = Field(default=None, description="Optional hero image for splash screen")

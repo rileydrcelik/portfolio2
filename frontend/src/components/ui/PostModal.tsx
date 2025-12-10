@@ -720,7 +720,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         category,
         album: selectedAlbum,
         title,
-        description,
+        description: description || '',
         content_url: uploadedContentUrl,
         thumbnail_url: finalThumbnailUrl,
         splash_image_url: splashImageUrl ?? null,
@@ -1175,7 +1175,6 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                       rows={3}
                       className="w-full p-3 border border-white/30 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 placeholder-white/50"
                       placeholder="Enter post description..."
-                      required
                     />
                   </div>
 
@@ -1333,7 +1332,6 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         !selectedSubject ||
                         !selectedAlbum ||
                         !title ||
-                        !description ||
                         (!contentFile && selectedSubject !== 'bio' && selectedSubject !== 'apparel') ||
                         (selectedSubject === 'projects' && !articleContent.trim()) ||
                         (selectedSubject === 'bio' && !contentFile && !articleContent.trim()) ||

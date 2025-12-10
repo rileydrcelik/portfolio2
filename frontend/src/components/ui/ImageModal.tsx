@@ -355,7 +355,7 @@ export default function ImageModal({
 
                     {articleContent && (
                       <div className="space-y-3">
-                        {!isProject && <h3 className="text-lg font-semibold text-white">Bio Entry</h3>}
+
                         <div className="prose prose-invert prose-headings:font-sans prose-p:text-white/80">
                           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                             {articleContent}
