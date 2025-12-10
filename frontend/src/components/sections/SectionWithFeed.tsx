@@ -26,7 +26,7 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
   const [activeTag, setActiveTag] = useState('');
   const [albums, setAlbums] = useState<Album[]>(initialAlbums);
   const [totalCount, setTotalCount] = useState(0);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<{ name: string; count: number }[]>([]);
 
   useEffect(() => {
     setActiveAlbum(initialAlbum);
@@ -70,14 +70,22 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
           const total = Array.from(albumCounts.values()).reduce((sum, count) => sum + count, 0);
           setTotalCount(total);
 
-          // Extract all unique tags
-          const tagSet = new Set<string>();
+          // Extract all unique tags with counts
+          const tagCounts = new Map<string, number>();
           allPosts.forEach(post => {
             if (post.tags && Array.isArray(post.tags)) {
-              post.tags.forEach(tag => tagSet.add(tag));
+              post.tags.forEach(tag => {
+                const count = tagCounts.get(tag) || 0;
+                tagCounts.set(tag, count + 1);
+              });
             }
           });
-          setAvailableTags(Array.from(tagSet).sort());
+
+          const sortedTags = Array.from(tagCounts.entries())
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+          setAvailableTags(sortedTags);
         } catch (error) {
           console.error('[SectionWithFeed] Error fetching data:', error);
           // On error, show empty state

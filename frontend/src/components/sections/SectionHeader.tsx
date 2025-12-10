@@ -18,7 +18,7 @@ interface SectionHeaderProps {
   albums: Album[];
   activeAlbum: string;
   onAlbumChange: (albumId: string) => void;
-  tags?: string[];
+  tags?: { name: string; count: number }[];
   activeTag?: string;
   onTagChange?: (tag: string) => void;
   categorySlug?: string;
@@ -36,6 +36,7 @@ export default function SectionHeader({
   categorySlug,
 }: SectionHeaderProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Get the active album info
   const activeAlbumInfo = albums.find(album => album.id === activeAlbum);
@@ -93,29 +94,50 @@ export default function SectionHeader({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 min-w-[160px] bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl overflow-hidden z-50 max-h-60 overflow-y-auto"
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 min-w-[160px] bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl overflow-hidden z-50"
                     >
-                      <button
-                        onClick={() => {
-                          onTagChange('');
-                          setIsFilterOpen(false);
-                        }}
-                        className={`w-full px-3 py-2 text-sm text-center transition-colors border-b border-white/10 ${activeTag === '' ? 'text-white bg-white/10 font-medium' : 'text-white/70 hover:bg-white/5'}`}
-                      >
-                        All tags
-                      </button>
-                      {tags.map(tag => (
+                      <div className="p-2 border-b border-white/10">
+                        <input
+                          type="text"
+                          placeholder="Search tags..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-transparent border border-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/40"
+                        />
+                      </div>
+                      <div className="max-h-60 overflow-y-auto">
                         <button
-                          key={tag}
                           onClick={() => {
-                            onTagChange(tag);
+                            onTagChange('');
                             setIsFilterOpen(false);
+                            setSearchQuery('');
                           }}
-                          className={`w-full px-3 py-2 text-sm text-center transition-colors ${activeTag === tag ? 'text-white bg-white/10 font-medium' : 'text-white/70 hover:bg-white/5'}`}
+                          className={`w-full px-3 py-2 text-sm text-center transition-colors border-b border-white/10 ${activeTag === '' ? 'text-white bg-white/10 font-medium' : 'text-white/70 hover:bg-white/5'}`}
                         >
-                          {tag}
+                          All tags
                         </button>
-                      ))}
+                        {tags
+                          .filter(tag => tag.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                          .map(tag => (
+                            <button
+                              key={tag.name}
+                              onClick={() => {
+                                onTagChange(tag.name);
+                                setIsFilterOpen(false);
+                                setSearchQuery('');
+                              }}
+                              className={`w-full px-3 py-2 text-sm text-center transition-colors ${activeTag === tag.name ? 'text-white bg-white/10 font-medium' : 'text-white/70 hover:bg-white/5'}`}
+                            >
+                              {tag.name} <span className="text-white/40 ml-1">({tag.count})</span>
+                            </button>
+                          ))}
+                        {tags.filter(tag => tag.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-center text-white/40 italic">
+                            No tags found
+                          </div>
+                        )}
+                      </div>
                     </motion.div>
                   </>
                 )}
