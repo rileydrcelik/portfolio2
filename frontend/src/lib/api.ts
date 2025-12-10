@@ -63,6 +63,7 @@ export interface Post {
   album: string;
   title: string;
   description?: string;
+  post_type?: string;
   content_url: string;
   thumbnail_url: string;
   splash_image_url?: string | null;
@@ -94,6 +95,7 @@ export interface PostCreate {
   gallery_urls?: string[];
   is_active?: boolean;
   is_favorite?: boolean;
+  post_type?: string;
 }
 
 export async function getPosts(params?: {

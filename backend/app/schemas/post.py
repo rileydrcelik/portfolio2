@@ -11,6 +11,7 @@ class PostBase(BaseModel):
     content_url: str = Field(..., description="URL to main content (S3 or base64 data URL)")
     thumbnail_url: str = Field(..., description="URL to thumbnail (S3 or base64 data URL)")
     splash_image_url: Optional[str] = Field(default=None, description="Optional hero image for splash screen")
+    post_type: Optional[str] = Field(default=None, description="Type of post: text, photo, audio, video, file")
     date: datetime = Field(..., description="Date for sorting/feed")
     tags: List[str] = Field(default_factory=list, description="Tags for technology, techniques, emotions, etc.")
     is_major: bool = Field(default=False, description="Flag indicating whether the post is major (featured)")
@@ -30,20 +31,16 @@ class PostUpdate(BaseModel):
     content_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     splash_image_url: Optional[str] = None
-    date: Optional[datetime] = None
-    tags: Optional[List[str]] = None
-    is_major: Optional[bool] = None
-    slug: Optional[str] = None
-    price: Optional[float] = None
-    gallery_urls: Optional[List[str]] = None
-    is_active: Optional[bool] = None
-    is_favorite: Optional[bool] = None
+    post_type: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
 
 class PostResponse(PostBase):
-    slug: str
     id: UUID
+    slug: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True

@@ -32,12 +32,14 @@ async def upload_image(
     allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     is_image = file.content_type.startswith('image/')
     is_audio = file.content_type.startswith('audio/')
+    is_video = file.content_type.startswith('video/')
+    is_application = file.content_type.startswith('application/')  # pdf, etc.
 
-    if not is_image and not is_audio:
+    if not is_image and not is_audio and not is_video and not is_application:
         print(f"[Upload] Invalid file type: {file.content_type}")
         raise HTTPException(
             status_code=415,
-            detail=f"Invalid file type '{file.content_type}'. Allowed image types: {', '.join(allowed_image_types)}. Allowed audio types: audio/*"
+            detail=f"Invalid file type '{file.content_type}'. Allowed types: image/*, audio/*, video/*, application/*"
         )
 
     # Read file content

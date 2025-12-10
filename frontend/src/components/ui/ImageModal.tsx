@@ -355,12 +355,32 @@ export default function ImageModal({
 
                     {articleContent && (
                       <div className="space-y-3">
-
-                        <div className="prose prose-invert prose-headings:font-sans prose-p:text-white/80">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                            {articleContent}
-                          </ReactMarkdown>
-                        </div>
+                        {/\.pdf$/i.test(articleContent) ? (
+                          <div className="w-full h-[600px] border border-white/20 rounded-lg overflow-hidden bg-white/5">
+                            <iframe
+                              src={articleContent}
+                              className="w-full h-full"
+                              title="Document Preview"
+                            />
+                          </div>
+                        ) : /\.(png|jpg|jpeg|webp|gif|bmp|svg)$/i.test(articleContent) ? (
+                          <div
+                            className="w-full rounded-lg overflow-hidden border border-white/20 cursor-pointer hover:opacity-95 transition-opacity"
+                            onClick={() => setIsFullscreen(true)}
+                          >
+                            <img
+                              src={articleContent}
+                              alt="Content"
+                              className="w-full h-auto"
+                            />
+                          </div>
+                        ) : (
+                          <div className="prose prose-invert prose-headings:font-sans prose-p:text-white/80">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                              {articleContent}
+                            </ReactMarkdown>
+                          </div>
+                        )}
                       </div>
                     )}
 

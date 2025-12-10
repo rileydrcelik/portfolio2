@@ -6,7 +6,8 @@ from app.database import Base
 class Post(Base):
     __tablename__ = "posts"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    slug = Column(String(255), nullable=False, unique=True)
+    slug = Column(String(255), nullable=True, unique=True, index=True)
+    post_type = Column(String, nullable=True)  # 'text', 'photo', 'audio', 'video', 'file'
     category = Column(String(50), nullable=False)
     album = Column(String(100), nullable=False)
     title = Column(String(255), nullable=False)
