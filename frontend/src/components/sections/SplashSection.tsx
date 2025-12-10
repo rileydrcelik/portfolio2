@@ -362,10 +362,10 @@ export default function SplashSection() {
           >
             {postLink ? (
               <Link href={postLink} className="block group">
-                <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-white mb-1 select-none leading-tight group-hover:text-white/90 transition-colors">
+                <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-white mb-1 select-none leading-tight transition-all duration-300 group-hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.6)] group-hover:text-white">
                   {featuredPost?.title || 'PICNIC'}
                 </h1>
-                <p className="text-xl md:text-2xl text-white/50 font-serif select-none group-hover:text-white/60 transition-colors">
+                <p className="text-xl md:text-2xl text-white/50 font-serif select-none transition-all duration-300 group-hover:text-white/80 group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
                   {featuredPost?.description || 'short description of the project...'}
                 </p>
               </Link>
