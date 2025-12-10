@@ -29,6 +29,6 @@ export default async function PostModalPage({ params }: PostPageProps) {
   const fallback = `/${config.slug}/${albumSlug}`;
 
   return (
-    <PostModalClient post={post} fallbackHref={fallback} />
+    <PostModalClient post={{ ...post, description: post.description || '' }} fallbackHref={fallback} />
   );
 }
