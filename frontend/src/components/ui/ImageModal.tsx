@@ -349,8 +349,8 @@ export default function ImageModal({
                 <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t lg:border-t-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <div className="space-y-6 max-w-4xl mx-auto">
                     <div>
-                      <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
-                      <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{description}</p>
+
+                      <p className="text-white/80 leading-relaxed whitespace-pre-wrap italic">{description}</p>
                     </div>
 
                     {articleContent && (
@@ -439,8 +439,8 @@ export default function ImageModal({
                   <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20 overflow-y-auto">
                     <div className="space-y-6">
                       <div>
-                        <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
-                        <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{description}</p>
+
+                        <p className="text-white/80 leading-relaxed whitespace-pre-wrap italic">{description}</p>
                       </div>
 
                       {isApparel && (
