@@ -150,7 +150,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     feedItems.push({
       id: parseInt(post.id.replace(/-/g, '').substring(0, 8), 16) || index + 1, // Convert UUID to number for ID
       title: post.title,
-      description: post.description,
+      description: post.description || '',
       image: imageUrl,
       category: post.category,
       tileShape: tileShape,
@@ -557,61 +557,64 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     }
   }, [isModalOpen]);
 
-  if (isLoading) {
-    return <FeedSkeleton count={20} />;
-  }
-
   return (
     <div className="bg-black">
       <div className="w-full px-4 py-8">
 
-        {/* Smart 2D Packing Grid Layout */}
-        <div
-          ref={containerRefCallback}
-          className="relative w-full"
-          style={{ height: containerHeight }}
-        >
-          {positions.map((position, index) => {
-            const item = position.item;
-            if (!item) return null;
+        {/* Measure width wrapper */}
+        <div ref={containerRefCallback} className="w-full">
+          {(isLoading || (feedItems.length > 0 && containerHeight === 0)) ? (
+            <FeedSkeleton count={20} />
+          ) : (
+            <div
+              className="relative w-full"
+              style={{ height: containerHeight }}
+            >
+              {positions.map((position, index) => {
+                const item = position.item;
+                if (!item) return null;
 
-            return (
-              <motion.div
-                key={item.id}
-                className="absolute cursor-pointer"
-                style={{
-                  left: position.x,
-                  top: position.y,
-                  width: position.width,
-                  height: position.height,
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.1 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                onClick={() => handleImageClick(item)}
-                whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
-                whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
-              >
-                <ImageTile item={item} index={index} />
-              </motion.div>
-            );
-          })}
+                return (
+                  <motion.div
+                    key={item.id}
+                    className="absolute cursor-pointer"
+                    style={{
+                      left: position.x,
+                      top: position.y,
+                      width: position.width,
+                      height: position.height,
+                    }}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.1 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    onClick={() => handleImageClick(item)}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
+                    whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
+                  >
+                    <ImageTile item={item} index={index} />
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Load More Button */}
-      {hasMore && (
-        <div className="flex justify-center mt-12 mb-8">
-          <button
-            onClick={handleLoadMore}
-            disabled={isFetchingMore}
-            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors duration-200 backdrop-blur-sm border border-white/10 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isFetchingMore ? 'Loading...' : 'Load More'}
-          </button>
-        </div>
-      )}
+      {
+        hasMore && (
+          <div className="flex justify-center mt-12 mb-8">
+            <button
+              onClick={handleLoadMore}
+              disabled={isFetchingMore}
+              className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors duration-200 backdrop-blur-sm border border-white/10 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isFetchingMore ? 'Loading...' : 'Load More'}
+            </button>
+          </div>
+        )
+      }
 
       {/* Image Modal */}
       {
