@@ -375,7 +375,7 @@ export default function ImageModal({
                             />
                           </div>
                         ) : (
-                          <div className="prose prose-invert prose-headings:font-sans prose-p:text-white/80">
+                          <div className="prose prose-invert font-sans prose-headings:font-sans prose-p:text-white/80">
                             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                               {articleContent}
                             </ReactMarkdown>

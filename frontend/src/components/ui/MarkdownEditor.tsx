@@ -31,7 +31,7 @@ const ensureProtocol = (raw: string) => {
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) {
     return trimmed;
   }
-  return `https://${trimmed.replace(/^\/+/,'')}`;
+  return `https://${trimmed.replace(/^\/+/, '')}`;
 };
 
 export default function MarkdownEditor({
@@ -201,18 +201,16 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => setActiveTab('write')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === 'write' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
-            }`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'write' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+              }`}
           >
             Write
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('preview')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              activeTab === 'preview' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
-            }`}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'preview' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+              }`}
           >
             Preview
           </button>
@@ -321,7 +319,7 @@ export default function MarkdownEditor({
       )}
 
       {activeTab === 'preview' && (
-        <div className="max-h-[480px] overflow-y-auto px-6 py-6 prose prose-invert prose-headings:font-serif prose-p:text-white/80">
+        <div className="max-h-[480px] overflow-y-auto px-6 py-6 prose prose-invert font-sans prose-headings:font-sans prose-p:text-white/80">
           {value.trim() ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
           ) : (
