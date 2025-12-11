@@ -32,6 +32,13 @@ class PostUpdate(BaseModel):
     thumbnail_url: Optional[str] = None
     splash_image_url: Optional[str] = None
     post_type: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_major: Optional[bool] = None
+    price: Optional[float] = None
+    gallery_urls: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    is_favorite: Optional[bool] = None
+    date: Optional[datetime] = None
     
     class Config:
         from_attributes = True
