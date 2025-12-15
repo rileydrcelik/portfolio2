@@ -49,7 +49,7 @@ async def upload_image(
         print(f"[Upload] Original file size: {len(file_content)} bytes")
         
         # Validate file size (max 50MB)
-        max_size = 50 * 1024 * 1024  # 50MB
+        max_size = 100 * 1024 * 1024  # 50MB
         if len(file_content) > max_size:
             file_size_mb = len(file_content) / (1024 * 1024)
             max_size_mb = max_size / (1024 * 1024)
