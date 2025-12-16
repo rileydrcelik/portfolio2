@@ -28,7 +28,7 @@ const TILE_SHAPES = {
   'major-portrait': { colSpan: 3, rowSpan: 4 },
   'major-landscape': { colSpan: 4, rowSpan: 3 },
   'major-square': { colSpan: 3, rowSpan: 4 },
-  'apparel': { colSpan: 2, rowSpan: 3 },
+  'shop': { colSpan: 2, rowSpan: 3 },
   'single-column': { colSpan: 1, rowSpan: 2 },
 };
 
@@ -68,7 +68,7 @@ const use2DPacking = (items: SkeletonItem[], containerWidth: number, gap: number
           // Map original shapes to mobile shapes
           const originalShapeKey = TILE_SHAPE_KEYS[item.id % TILE_SHAPE_KEYS.length];
           // If it's portrait or apparel (tall items), make it tall (1x2), otherwise square (1x1)
-          if (originalShapeKey.includes('portrait') || originalShapeKey === 'apparel' || originalShapeKey === 'single-column') {
+          if (originalShapeKey.includes('portrait') || originalShapeKey === 'shop' || originalShapeKey === 'single-column') {
             colSpan = MOBILE_TILE_SHAPES.tall.colSpan;
             rowSpan = MOBILE_TILE_SHAPES.tall.rowSpan;
           } else {

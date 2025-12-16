@@ -116,7 +116,7 @@ export default function ImageModal({
 
   const isProject = category === 'projects';
   const isBio = category === 'bio' || isText;
-  const isApparel = category === 'apparel';
+  const isShop = category === 'apparel';
 
   const isImageUrl = (value?: string | null) => {
     if (!value) return false;
@@ -463,7 +463,7 @@ export default function ImageModal({
                         <p className="text-white/80 leading-relaxed whitespace-pre-wrap italic">{description}</p>
                       </div>
 
-                      {isApparel && (
+                      {isShop && (
                         <button
                           type="button"
                           className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold border border-white/20 shadow-md shadow-black/30 transition-all duration-200 w-full md:w-auto backdrop-blur-sm hover:border-white/50 hover:shadow-xl hover:bg-white/20"
@@ -492,7 +492,7 @@ export default function ImageModal({
                         </div>
                       )}
 
-                      {!isApparel && (
+                      {!isShop && (
                         <div>
                           <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
                           <div className="space-y-2 text-white/80">

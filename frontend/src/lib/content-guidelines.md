@@ -16,7 +16,7 @@
 - **2x1** - Compact wide format
 - **4x1** - Extended wide format
 
-## Apparel
+## Shop
 - **2x3** - Standard portrait format for product display
 
 ## Grid System

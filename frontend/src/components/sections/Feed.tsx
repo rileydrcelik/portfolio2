@@ -21,8 +21,8 @@ const TILE_SHAPES = {
   'major-landscape': { colSpan: 4, rowSpan: 3, size: 'major', aspect: 'landscape', category: 'art' }, // 4x3 units (4:3)
   'major-square': { colSpan: 3, rowSpan: 4, size: 'major', aspect: 'portrait', category: 'art' }, // 3x4 units (3:4)
 
-  // Apparel - Using minor portrait
-  'apparel': { colSpan: 2, rowSpan: 3, size: 'apparel', aspect: 'portrait', category: 'apparel' }, // 2x3 units (2:3)
+  // Shop - Using minor portrait
+  'shop': { colSpan: 2, rowSpan: 3, size: 'apparel', aspect: 'portrait', category: 'apparel' }, // 2x3 units (2:3)
 
   // Single column - for filling remaining space
   'single-column': { colSpan: 1, rowSpan: 2, size: 'minor', aspect: 'portrait', category: 'art' }, // 1x2 units (1:2)
@@ -108,7 +108,7 @@ const findClosestTileShape = (aspectRatio: number): TileShape => {
     'major-portrait': 0.75,   // 3x4 = 3:4
     'major-landscape': 1.5,   // 4x3 = 4:3
     'major-square': 0.75,     // 3x4 = 3:4 (same as major-portrait)
-    'apparel': 0.5,           // 2x3 = 2:3 (same as minor-portrait)
+    'shop': 0.5,              // 2x3 = 2:3 (same as minor-portrait)
   };
 
   let closestShape: TileShape = 'minor-square';
@@ -152,7 +152,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       title: post.title,
       description: post.description || '',
       image: imageUrl,
-      category: post.category,
+      category: post.category === 'apparel' ? 'shop' : post.category,
       tileShape: tileShape,
       album: post.album,
       date: post.date, // Include the date from the post
@@ -221,7 +221,7 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
       title: fileName.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       description: `Creative work from ${directory.replace('_placeholders', '')}`,
       image: imageData.path,
-      category: directory.replace('_placeholders', '').charAt(0).toUpperCase() + directory.replace('_placeholders', '').slice(1),
+      category: directory.includes('apparel') ? 'Shop' : (directory.replace('_placeholders', '').charAt(0).toUpperCase() + directory.replace('_placeholders', '').slice(1)),
       tileShape: tileShape,
       album: imageData.album,
       contentUrl: undefined,

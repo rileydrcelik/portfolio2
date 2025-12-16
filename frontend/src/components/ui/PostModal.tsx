@@ -31,7 +31,7 @@ const subjects = [
   { id: 'music', name: 'Music', icon: MusicalNoteIcon },
   { id: 'projects', name: 'Projects', icon: CodeBracketIcon },
   { id: 'bio', name: 'Bio', icon: UserIcon },
-  { id: 'apparel', name: 'Apparel', icon: ShoppingBagIcon },
+  { id: 'shop', name: 'Shop', icon: ShoppingBagIcon },
 ];
 
 
@@ -194,7 +194,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [audioPreviewName, setAudioPreviewName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const isMusic = selectedSubject === 'music';
-  const isApparel = selectedSubject === 'apparel';
+  const isShop = selectedSubject === 'shop';
   const isFilePost = selectedSubject === 'bio' && postType === 'file';
   const [articleContent, setArticleContent] = useState('');
   const [isArticleImageUploading, setIsArticleImageUploading] = useState(false);
@@ -417,10 +417,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
 
     setError(null);
 
-    if (isApparel) {
+    if (isShop) {
       const newFiles = Array.from(fileList).filter((file) => file.type.startsWith('image/'));
       if (newFiles.length === 0) {
-        setError('Please upload image files for apparel products.');
+        setError('Please upload image files for shop products.');
         return;
       }
 
@@ -518,7 +518,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     setGalleryFiles((prev) => {
       const updated = prev.filter((_, i) => i !== index);
       setContentFile(updated[0] || null);
-      if (selectedSubject === 'apparel') {
+      if (selectedSubject === 'shop') {
         setContentImagePreview('');
       }
       return updated;
@@ -563,7 +563,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       const isProject = selectedSubject === 'projects';
       const isBio = selectedSubject === 'bio';
 
-      if (!contentFile && !isBio && !isApparel) {
+      if (!contentFile && !isBio && !isShop) {
         console.error('[PostModal] No file selected');
         setError(isMusic ? 'Please select an audio file' : 'Please upload a cover image');
         setIsSubmitting(false);
@@ -590,10 +590,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       }
 
       let parsedPrice: number | null = null;
-      if (isApparel) {
+      if (isShop) {
         parsedPrice = price.trim() === '' ? null : Number(price);
         if (parsedPrice === null || Number.isNaN(parsedPrice) || parsedPrice < 0) {
-          setError('Please provide a valid price for apparel items.');
+          setError('Please provide a valid price for shop items.');
           setIsSubmitting(false);
           return;
         }
@@ -603,7 +603,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
           return;
         }
         if (!thumbnailFile) {
-          setError('Please upload a thumbnail image for apparel posts.');
+          setError('Please upload a thumbnail image for shop posts.');
           setIsSubmitting(false);
           return;
         }
@@ -616,7 +616,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       let splashImageUrl = selectedSubject === 'projects' ? finalThumbnailUrl : null;
       let galleryUrls: string[] = [];
 
-      if (isApparel) {
+      if (isShop) {
         setIsUploading(true);
         try {
           const uploadedGallery: string[] = [];
@@ -651,7 +651,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
               const thumbnailUpload = await uploadImage(compressedThumb, 'thumbnails', authToken);
               finalThumbnailUrl = thumbnailUpload.url;
             } catch (thumbErr) {
-              console.warn('[PostModal] Thumbnail compression failed for apparel, uploading original:', thumbErr);
+              console.warn('[PostModal] Thumbnail compression failed for shop, uploading original:', thumbErr);
               if (authToken) {
                 const fallbackThumbUpload = await uploadImage(thumbnailFile, 'thumbnails', authToken);
                 finalThumbnailUrl = fallbackThumbUpload.url;
@@ -663,8 +663,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
             finalThumbnailUrl = uploadedGallery[0];
           }
         } catch (err) {
-          console.error('[PostModal] Apparel upload error:', err);
-          setError(err instanceof Error ? err.message : 'Failed to upload apparel images');
+          setError(err instanceof Error ? err.message : 'Failed to upload shop images');
           setIsSubmitting(false);
           setIsUploading(false);
           return;
@@ -673,7 +672,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         }
       }
 
-      if (!isApparel && contentFile && !contentUrl) {
+      if (!isShop && contentFile && !contentUrl) {
         console.log('[PostModal] Uploading file to S3...');
         setIsUploading(true);
         try {
@@ -764,7 +763,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       }
 
       // Map subject to category (some naming differences)
-      const category = selectedSubject === 'photo' ? 'photo' : selectedSubject;
+      const category = selectedSubject === 'photo' ? 'photo' : (selectedSubject === 'shop' ? 'apparel' : selectedSubject);
 
       const postData: PostCreate = {
         category,
@@ -781,7 +780,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         post_type: selectedSubject === 'bio' ? postType : undefined,
       };
 
-      if (isApparel) {
+      if (isShop) {
         postData.price = parsedPrice;
         postData.gallery_urls = galleryUrls;
       }
@@ -836,7 +835,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const resolvePrimaryFolder = () => {
     if (isMusic) return 'audio';
     if (selectedSubject === 'photo') return 'photography';
-    if (selectedSubject === 'apparel') return 'apparel';
+    if (selectedSubject === 'shop') return 'apparel';
 
     // Bio specific folders based on post type
     if (selectedSubject === 'bio') {
@@ -1037,14 +1036,14 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                   )}
 
 
-                  {(selectedSubject === 'music' || selectedSubject === 'apparel' || isFilePost) && (
+                  {(selectedSubject === 'music' || selectedSubject === 'shop' || isFilePost) && (
                     <div>
                       <label className="block text-sm font-medium text-white/90 mb-2">
                         {selectedSubject === 'music'
                           ? 'Thumbnail Image (1:1)'
                           : isFilePost
                             ? 'Thumbnail Image'
-                            : 'Apparel Thumbnail (1:1 recommended)'}
+                            : 'Shop Thumbnail (1:1 recommended)'}
                       </label>
                       <div className="mb-3">
                         <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/30 rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors">
@@ -1097,7 +1096,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         ? 'Audio Upload'
                         : selectedSubject === 'projects'
                           ? 'Thumbnail Upload'
-                          : selectedSubject === 'apparel'
+                          : selectedSubject === 'shop'
                             ? 'Product Gallery Images'
                             : isFilePost
                               ? 'File Upload'
@@ -1129,7 +1128,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                                   ? 'Click to upload project thumbnail'
                                   : selectedSubject === 'music'
                                     ? 'Click to upload or drag and drop audio'
-                                    : selectedSubject === 'apparel'
+                                    : selectedSubject === 'shop'
                                       ? 'Click to upload one or more product photos'
                                       : isFilePost
                                         ? 'Click to upload file'
@@ -1137,14 +1136,14 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                               </p>
                               <p className="text-xs text-white/60 mt-1">
                                 {selectedSubject === 'music'
-                                  ? 'MP3 up to 50MB'
+                                  ? 'MP3 up to 100MB'
                                   : selectedSubject === 'projects'
                                     ? 'PNG, JPG up to 10MB • Square or 3:2 recommended'
-                                    : selectedSubject === 'apparel'
+                                    : selectedSubject === 'shop'
                                       ? 'PNG, JPG up to 10MB • Add multiple angles'
                                       : isFilePost
-                                        ? 'Any file type up to 50MB'
-                                        : 'PNG, JPG, GIF up to 50MB'}
+                                        ? 'Any file type up to 100MB'
+                                        : 'PNG, JPG, GIF up to 100MB'}
                               </p>
                             </>
                           )}
@@ -1153,14 +1152,14 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                           type="file"
                           className="hidden"
                           accept={isMusic ? 'audio/*' : isFilePost ? '*/*' : 'image/*'}
-                          multiple={isApparel}
+                          multiple={isShop}
                           onChange={handleContentFileSelect}
                           disabled={isUploading}
                         />
                       </label>
                     </div>
 
-                    {selectedSubject !== 'music' && !isApparel && contentImagePreview && (
+                    {selectedSubject !== 'music' && !isShop && contentImagePreview && (
                       <div className="mt-3">
                         <img
                           src={contentImagePreview}
@@ -1187,7 +1186,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                       </div>
                     )}
 
-                    {isApparel && galleryPreviews.length > 0 && (
+                    {isShop && galleryPreviews.length > 0 && (
                       <div className="mt-4">
                         <p className="text-sm text-white/70 mb-2">Gallery Preview</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1261,7 +1260,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                     />
                   </div>
 
-                  {isApparel && (
+                  {isShop && (
                     <div>
                       <label className="block text-sm font-medium text-white/90 mb-2">
                         Price (USD)
@@ -1447,12 +1446,12 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         !selectedSubject ||
                         !selectedAlbum ||
                         !title ||
-                        (!contentFile && selectedSubject !== 'bio' && selectedSubject !== 'apparel') ||
+                        (!contentFile && selectedSubject !== 'bio' && selectedSubject !== 'shop') ||
                         (selectedSubject === 'projects' && !articleContent.trim()) ||
                         (selectedSubject === 'bio' && !contentFile && !articleContent.trim()) ||
-                        ((isMusic || isApparel || isFilePost) && !thumbnailFile) ||
-                        (isApparel && price.trim() === '') ||
-                        (isApparel && galleryFiles.length === 0) ||
+                        ((isMusic || isShop || isFilePost) && !thumbnailFile) ||
+                        (isShop && price.trim() === '') ||
+                        (isShop && galleryFiles.length === 0) ||
                         isSubmitting ||
                         isUploading ||
                         isArticleImageUploading

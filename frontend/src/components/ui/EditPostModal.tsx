@@ -54,7 +54,7 @@ export default function EditPostModal({
     const [isAlbumDropdownOpen, setIsAlbumDropdownOpen] = useState(false);
     const [articleContent, setArticleContent] = useState(post.contentUrl || '');
 
-    const isApparel = formData.category === 'apparel';
+    const isShop = formData.category === 'apparel';
     const isProject = formData.category === 'projects';
 
     const handleEditorImageUpload = async (file: File): Promise<string> => {
@@ -139,7 +139,7 @@ export default function EditPostModal({
 
         // If not apparel, ensure price is null
         const submitData = { ...formData };
-        if (!isApparel) {
+        if (!isShop) {
             submitData.price = null;
         }
 
@@ -315,8 +315,8 @@ export default function EditPostModal({
                                         </div>
                                     </div>
 
-                                    {/* Price - Only show if apparel */}
-                                    {isApparel && (
+                                    {/* Price - Only show if shop */}
+                                    {isShop && (
                                         <div>
                                             <label className="block text-sm font-medium text-white/90 mb-2">Price (USD)</label>
                                             <input

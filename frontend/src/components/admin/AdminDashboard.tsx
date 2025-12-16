@@ -12,7 +12,7 @@ import {
 interface AdminItem {
   id: string;
   title: string;
-  type: 'art' | 'photography' | 'music' | 'projects' | 'apparel';
+  type: 'art' | 'photography' | 'music' | 'projects' | 'shop';
   status: 'published' | 'draft';
   createdAt: string;
   updatedAt: string;
@@ -49,13 +49,13 @@ export default function AdminDashboard() {
   const [items, setItems] = useState<AdminItem[]>(mockItems);
   const [selectedType, setSelectedType] = useState<string>('all');
 
-  const filteredItems = selectedType === 'all' 
-    ? items 
+  const filteredItems = selectedType === 'all'
+    ? items
     : items.filter(item => item.type === selectedType);
 
   const getStatusColor = (status: AdminItem['status']) => {
-    return status === 'published' 
-      ? 'bg-green-100 text-green-800' 
+    return status === 'published'
+      ? 'bg-green-100 text-green-800'
       : 'bg-yellow-100 text-yellow-800';
   };
 
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
       photography: 'bg-blue-100 text-blue-800',
       music: 'bg-pink-100 text-pink-800',
       projects: 'bg-green-100 text-green-800',
-      apparel: 'bg-orange-100 text-orange-800',
+      shop: 'bg-orange-100 text-orange-800',
     };
     return colors[type];
   };
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
             <option value="photography">Photography</option>
             <option value="music">Music</option>
             <option value="projects">Projects</option>
-            <option value="apparel">Apparel</option>
+            <option value="shop">Shop</option>
           </select>
         </div>
 

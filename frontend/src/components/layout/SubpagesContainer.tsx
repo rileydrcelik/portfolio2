@@ -28,7 +28,7 @@ const subpages: NavigationItem[] = [
   { id: 'photography', name: 'Photography', icon: CameraIcon, href: '/photo' },
   { id: 'music', name: 'Music', icon: MusicalNoteIcon, href: '/music' },
   { id: 'projects', name: 'Projects', icon: CodeBracketIcon, href: '/projects' },
-  { id: 'apparel', name: 'Shop', icon: ShoppingBagIcon, href: '/shop' },
+  { id: 'shop', name: 'Shop', icon: ShoppingBagIcon, href: '/shop' },
 ];
 
 interface NavigationLinkProps {

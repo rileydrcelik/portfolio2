@@ -30,10 +30,10 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     directory: 'pinterest_placeholders',
     slug: 'projects',
   },
-  apparel: {
+  shop: {
     title: 'Shop',
     directory: 'apparel_placeholders',
-    slug: 'apparel',
+    slug: 'shop',
   },
 };
 

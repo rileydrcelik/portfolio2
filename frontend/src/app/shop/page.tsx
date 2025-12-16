@@ -6,7 +6,7 @@ export default function ShopPage() {
       title="Shop"
       directory="apparel_placeholders"
       category="apparel"
-      categorySlug="apparel"
+      categorySlug="shop"
       useDatabase={true}
     />
   );
