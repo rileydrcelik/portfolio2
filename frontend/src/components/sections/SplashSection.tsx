@@ -150,8 +150,55 @@ export default function SplashSection() {
     }
   }, [featuredImageUrl, imageLoaded]);
 
+  // Last Updated Date logic
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+
+  useEffect(() => {
+    // 1. Check cache first for instant load
+    // We try to verify if there's a stored date
+    const cachedDate = localStorage.getItem('splash_last_updated');
+    if (cachedDate) {
+      setLastUpdated(cachedDate);
+    }
+
+    // 2. Fetch fresh data
+    const fetchLastUpdated = async () => {
+      try {
+        const posts = await getPosts({ limit: 1, sort_by: 'updated_at' });
+        if (posts.length > 0) {
+          const dateObj = new Date(posts[0].updated_at || posts[0].date);
+          const formattedDate = dateObj.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
+
+          setLastUpdated(formattedDate);
+          localStorage.setItem('splash_last_updated', formattedDate);
+        }
+      } catch (error) {
+        console.error('[SplashSection] Failed to fetch last updated:', error);
+      }
+    };
+
+    fetchLastUpdated();
+  }, []);
+
   return (
     <>
+      {/* Last Updated Text */}
+      <div
+        className="absolute left-6 top-6 z-40 pointer-events-none"
+        style={{
+          opacity: fadeOut,
+          willChange: 'opacity'
+        }}
+      >
+        <p className="text-[10px] text-white/40 tracking-[0.2em] font-medium">
+          last updated: {lastUpdated ? lastUpdated.toLowerCase() : 'loading...'}
+        </p>
+      </div>
+
       {/* Top Splash Sidebar - first 4 icons */}
       <div
         className="absolute left-0 top-0 h-full w-full pointer-events-none z-50"

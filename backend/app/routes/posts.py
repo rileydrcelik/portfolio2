@@ -48,6 +48,7 @@ async def get_posts(
     is_favorite: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
+    sort_by: str = "date",
     db: Session = Depends(get_db)
 ):
     """Get all posts with optional filters"""
@@ -65,7 +66,10 @@ async def get_posts(
         query = query.filter(Post.is_favorite == is_favorite)
     
     try:
-        posts = query.order_by(desc(Post.date)).limit(limit).offset(offset).all()
+        if sort_by == 'updated_at':
+            posts = query.order_by(desc(Post.updated_at)).limit(limit).offset(offset).all()
+        else:
+            posts = query.order_by(desc(Post.date)).limit(limit).offset(offset).all()
         return posts
     except Exception as exc:
         logger.exception("[Posts] Failed to fetch posts", extra={

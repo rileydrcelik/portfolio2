@@ -106,6 +106,7 @@ export async function getPosts(params?: {
   is_major?: boolean;
   is_favorite?: boolean;
   tag?: string;
+  sort_by?: string;
 }): Promise<Post[]> {
   const queryParams = new URLSearchParams();
   if (params?.category) queryParams.append('category', params.category);
@@ -115,6 +116,7 @@ export async function getPosts(params?: {
   if (params?.offset) queryParams.append('offset', params.offset.toString());
   if (typeof params?.is_major === 'boolean') queryParams.append('is_major', params.is_major ? 'true' : 'false');
   if (typeof params?.is_favorite === 'boolean') queryParams.append('is_favorite', params.is_favorite ? 'true' : 'false');
+  if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
 
   const response = await fetch(`${POSTS_ENDPOINT}?${queryParams.toString()}`);
   if (!response.ok) {
