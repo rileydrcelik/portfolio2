@@ -40,11 +40,21 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
           // Fetch all posts for this category
           const allPosts = await getPosts({ category, limit: 1000 });
 
-          // Calculate counts per album
+          // Calculate counts and latest date per album
           const albumCounts = new Map<string, number>();
+          const albumLatestDates = new Map<string, number>();
+
           allPosts.forEach(post => {
             const currentCount = albumCounts.get(post.album) || 0;
             albumCounts.set(post.album, currentCount + 1);
+
+            // Track latest date (compare created_at or updated_at or date)
+            // Using updated_at for "last updated", falling back to created_at or date
+            const postDate = new Date(post.updated_at || post.created_at || post.date).getTime();
+            const currentLatest = albumLatestDates.get(post.album) || 0;
+            if (postDate > currentLatest) {
+              albumLatestDates.set(post.album, postDate);
+            }
           });
 
           // Create dynamic albums from unique album values in posts
@@ -52,11 +62,30 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
             id: albumSlug,
             name: albumSlug,
             count: count,
-          })).sort((a, b) => a.name.localeCompare(b.name));
+          })).sort((a, b) => {
+            const dateA = albumLatestDates.get(a.id) || 0;
+            const dateB = albumLatestDates.get(b.id) || 0;
+            return dateB - dateA; // Descending order (newest first)
+          });
 
           // Check for favorites
           const favoritesCount = allPosts.filter(post => post.is_favorite).length;
           if (favoritesCount > 0) {
+            // Find latest favorite date
+            const latestFavDate = allPosts
+              .filter(p => p.is_favorite)
+              .reduce((max, p) => {
+                const d = new Date(p.updated_at || p.created_at || p.date).getTime();
+                return d > max ? d : max;
+              }, 0);
+
+            // We want favorites to be first usually, or sorted by its own date? 
+            // Usually "Favorites" is a special category at the top. 
+            // The existing code unshifted it to the front. 
+            // Let's keep it at the front as per existing logic, or arguably it should also be sorted?
+            // "Favorites" is a meta-album. The previous code unshifted it *after* sort. 
+            // So it was always first. I will keep it always first for consistency.
+
             dynamicAlbums.unshift({
               id: 'favorites',
               name: 'favorites',
