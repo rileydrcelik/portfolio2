@@ -9,17 +9,22 @@ import FeedSkeleton from '@/components/ui/FeedSkeleton';
 import { getPosts, Post, deletePost } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 
-// 9-column grid system: small items (2x3, 3x2, 2x2) and large items (4x3, 3x4, 3x4)
+// 9-column grid system: small items (2x3, 3x2, 2x2), large items (4x3, 3x4), and featured items (6 columns)
 const TILE_SHAPES = {
   // Small Content - Various aspect ratios
   'minor-square': { colSpan: 2, rowSpan: 2, size: 'minor', aspect: 'square', category: 'art' }, // 2x2 units (1:1)
   'minor-portrait': { colSpan: 2, rowSpan: 3, size: 'minor', aspect: 'portrait', category: 'art' }, // 2x3 units (2:3)
   'minor-landscape': { colSpan: 3, rowSpan: 2, size: 'minor', aspect: 'landscape', category: 'art' }, // 3x2 units (3:2)
 
-  // Large Content - New aspect ratios
+  // Large Content - Various aspect ratios
   'major-portrait': { colSpan: 3, rowSpan: 4, size: 'major', aspect: 'portrait', category: 'art' }, // 3x4 units (3:4)
   'major-landscape': { colSpan: 4, rowSpan: 3, size: 'major', aspect: 'landscape', category: 'art' }, // 4x3 units (4:3)
   'major-square': { colSpan: 3, rowSpan: 4, size: 'major', aspect: 'portrait', category: 'art' }, // 3x4 units (3:4)
+
+  // Featured Content - 6 columns wide for is_major posts
+  'featured-portrait': { colSpan: 6, rowSpan: 8, size: 'featured', aspect: 'portrait', category: 'art' }, // 6x8 units (3:4)
+  'featured-landscape': { colSpan: 6, rowSpan: 4, size: 'featured', aspect: 'landscape', category: 'art' }, // 6x4 units (3:2)
+  'featured-square': { colSpan: 6, rowSpan: 6, size: 'featured', aspect: 'square', category: 'art' }, // 6x6 units (1:1)
 
   // Shop - Using minor portrait
   'shop': { colSpan: 2, rowSpan: 3, size: 'apparel', aspect: 'portrait', category: 'apparel' }, // 2x3 units (2:3)
@@ -144,8 +149,23 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     const dimensions = await getImageDimensions(imageUrl);
     const aspectRatio = dimensions.width / dimensions.height;
 
-    // Find the closest tile shape based on aspect ratio
-    const tileShape = findClosestTileShape(aspectRatio);
+    // Determine tile shape
+    let tileShape: TileShape;
+    if (post.category === 'apparel') {
+      tileShape = 'shop';
+    } else if (post.is_major) {
+      // Featured posts (is_major) get 6-column tiles
+      if (aspectRatio > 1.2) {
+        tileShape = 'featured-landscape';
+      } else if (aspectRatio < 0.8) {
+        tileShape = 'featured-portrait';
+      } else {
+        tileShape = 'featured-square';
+      }
+    } else {
+      // Regular posts use the original aspect-ratio matching
+      tileShape = findClosestTileShape(aspectRatio);
+    }
 
     feedItems.push({
       id: parseInt(post.id.replace(/-/g, '').substring(0, 8), 16) || index + 1, // Convert UUID to number for ID
