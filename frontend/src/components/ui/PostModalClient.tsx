@@ -26,6 +26,7 @@ interface PostModalClientProps {
 export default function PostModalClient({ post: initialPost, fallbackHref }: PostModalClientProps) {
   const router = useRouter();
   const [post, setPost] = useState(initialPost);
+  const [isOpen, setIsOpen] = useState(true);
   const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(post.content_url);
   const looksLikeText =
     post.category === 'bio' ||
@@ -34,6 +35,10 @@ export default function PostModalClient({ post: initialPost, fallbackHref }: Pos
     post.thumbnail_url || post.splash_image_url || (looksLikeText ? null : post.content_url);
 
   const handleClose = () => {
+    setIsOpen(false);
+  };
+
+  const handleExitComplete = () => {
     // Check if there is history (length > 1 usually implies we can go back)
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
@@ -52,8 +57,9 @@ export default function PostModalClient({ post: initialPost, fallbackHref }: Pos
   return (
     <div className="min-h-screen bg-black">
       <ImageModal
-        isOpen={true}
+        isOpen={isOpen}
         onClose={handleClose}
+        onExitComplete={handleExitComplete}
         image={imageCandidate}
         title={post.title}
         description={post.description}

@@ -33,6 +33,7 @@ interface ImageModalProps {
   isActive?: boolean;
   isFavorite?: boolean;
   onUpdate?: (updatedPost: Post) => void;
+  onExitComplete?: () => void;
 }
 
 export default function ImageModal({
@@ -58,6 +59,7 @@ export default function ImageModal({
   isActive,
   isFavorite: initialIsFavorite = false,
   onUpdate,
+  onExitComplete,
 }: ImageModalProps) {
   const image = rawImage ?? '';
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -269,7 +271,7 @@ export default function ImageModal({
   if (!mounted) return null;
 
   return createPortal(
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={onExitComplete}>
       {isOpen && (
         <>
           {/* Backdrop */}

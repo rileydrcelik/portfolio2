@@ -5,8 +5,8 @@ const navigation = {
   main: [
     { name: 'Bio', href: '/bio' },
     { name: 'Music', href: '/music' },
-    { name: 'Art', href: '/art' },
-    { name: 'Photography', href: '/photo' },
+    { name: 'Art', href: '/artwork' },
+    { name: 'Photography', href: '/photography' },
     { name: 'Projects', href: '/projects' },
     { name: 'Shop', href: '/shop' },
   ],

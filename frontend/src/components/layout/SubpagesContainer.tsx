@@ -72,7 +72,7 @@ export default function SubpagesContainer({
   className = 'md:px-2 md:py-2 md:-mt-16',
 }: SubpagesContainerProps) {
   return (
-    <div className={className}>
+    <nav aria-label="Main categories" className={className}>
       <div
         className="rounded-2xl p-1 md:p-3 backdrop-blur-sm"
         style={{ backgroundColor: 'rgba(255, 255, 255, 0.175)' }}
@@ -88,6 +88,6 @@ export default function SubpagesContainer({
           ))}
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

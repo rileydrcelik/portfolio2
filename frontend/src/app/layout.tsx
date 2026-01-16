@@ -14,9 +14,56 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://rileydrcelik.com";
+
 export const metadata: Metadata = {
-  title: "Riley Drcelik",
-  description: "Riley Drcelik's portfolio",
+  title: {
+    default: "Riley Drcelik",
+    template: "%s | Riley Drcelik",
+  },
+  description: "Portfolio of Riley Drcelik - Artist, Photographer, Musician, and Developer",
+  keywords: ["Riley Drcelik", "portfolio", "artist", "photographer", "musician", "developer", "artwork", "photography", "music", "projects"],
+  authors: [{ name: "Riley Drcelik" }],
+  creator: "Riley Drcelik",
+  metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: siteUrl,
+    siteName: "Riley Drcelik",
+    title: "Riley Drcelik",
+    description: "Portfolio of Riley Drcelik - Artist, Photographer, Musician, and Developer",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Riley Drcelik",
+    description: "Portfolio of Riley Drcelik - Artist, Photographer, Musician, and Developer",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+// JSON-LD WebSite schema for Google sitelinks
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Riley Drcelik",
+  url: siteUrl,
+  description: "Portfolio of Riley Drcelik - Artist, Photographer, Musician, and Developer",
+  author: {
+    "@type": "Person",
+    name: "Riley Drcelik",
+  },
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${siteUrl}/search?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
 };
 
 export default function RootLayout({
@@ -26,6 +73,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -38,3 +91,4 @@ export default function RootLayout({
     </html>
   );
 }
+

@@ -521,6 +521,10 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    // Do not clear setSelectedImage here, wait for animation
+  };
+
+  const handleExitComplete = () => {
     setSelectedImage(null);
 
     if (typeof window !== 'undefined' && previousUrlRef.current) {
@@ -642,6 +646,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           <ImageModal
             isOpen={isModalOpen}
             onClose={handleCloseModal}
+            onExitComplete={handleExitComplete}
             image={selectedImage.image}
             title={selectedImage.title}
             description={selectedImage.description}
