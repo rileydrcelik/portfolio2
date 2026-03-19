@@ -163,7 +163,7 @@ export default function SectionHeader({
 
         {/* Album Filter Links */}
         <motion.div
-          className="flex flex-wrap items-center gap-4"
+          className="flex items-center gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -173,14 +173,14 @@ export default function SectionHeader({
             <Link
               href={`/${categorySlug}`}
               onClick={() => onAlbumChange('all')}
-              className={`text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''}`}
+              className={`shrink-0 whitespace-nowrap text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''}`}
             >
               all
             </Link>
           ) : (
             <button
               onClick={() => onAlbumChange('all')}
-              className={`text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''}`}
+              className={`shrink-0 whitespace-nowrap text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''}`}
             >
               all
             </button>
@@ -189,7 +189,7 @@ export default function SectionHeader({
           {/* "favorites" - not draggable */}
           {favoritesAlbum && (() => {
             const isActive = activeAlbum === 'favorites';
-            const cls = `text-white hover:text-gray-300 transition-colors pb-1 ${isActive ? 'border-b-2 border-white' : ''}`;
+            const cls = `shrink-0 whitespace-nowrap text-white hover:text-gray-300 transition-colors pb-1 ${isActive ? 'border-b-2 border-white' : ''}`;
             return categorySlug ? (
               <Link
                 href={`/${categorySlug}/favorites`}
@@ -211,12 +211,12 @@ export default function SectionHeader({
             values={draggableAlbums}
             onReorder={handleReorder}
             as="div"
-            className="flex flex-wrap gap-4"
+            className="flex gap-4"
           >
             {draggableAlbums.map((album) => {
               const displayName = formatName(album.name) || formatName(album.id) || album.id || '';
               const isActive = activeAlbum === album.id;
-              const commonClass = `text-white hover:text-gray-300 transition-colors pb-1 ${isActive ? 'border-b-2 border-white' : ''}`;
+              const commonClass = `shrink-0 whitespace-nowrap text-white hover:text-gray-300 transition-colors pb-1 ${isActive ? 'border-b-2 border-white' : ''}`;
               return (
                 <Reorder.Item
                   key={album.id}

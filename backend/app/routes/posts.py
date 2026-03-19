@@ -89,15 +89,13 @@ async def get_unique_albums_by_category(
     db: Session = Depends(get_db)
 ):
     """Get unique album names from posts for a given category"""
+    from sqlalchemy import func
     try:
-        # Get distinct album values from posts for this category
-        albums = db.query(Post.album).filter(
-            Post.category == category
-        ).distinct().all()
-        
-        # Extract album names from tuples
-        album_names = [album[0] for album in albums if album[0]]
-        
+        primary = db.query(Post.album.label('album')).filter(Post.category == category)
+        cross = db.query(func.unnest(Post.cross_post_albums).label('album')).filter(Post.category == category)
+        combined = primary.union(cross).subquery()
+        rows = db.query(combined.c.album).distinct().all()
+        album_names = [row[0] for row in rows if row[0]]
         return {"albums": sorted(album_names)}
     except Exception as e:
         print(f"[Posts] Error getting unique albums: {str(e)}")
