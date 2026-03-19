@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 
 import { Filter } from 'lucide-react';
 import Link from 'next/link';
@@ -18,6 +18,8 @@ interface SectionHeaderProps {
   albums: Album[];
   activeAlbum: string;
   onAlbumChange: (albumId: string) => void;
+  onAlbumsReorder?: (albums: Album[]) => void;
+  canReorder?: boolean;
   tags?: { name: string; count: number }[];
   activeTag?: string;
   onTagChange?: (tag: string) => void;
@@ -30,6 +32,8 @@ export default function SectionHeader({
   albums,
   activeAlbum,
   onAlbumChange,
+  onAlbumsReorder,
+  canReorder = false,
   tags = [],
   activeTag = '',
   onTagChange,
@@ -37,6 +41,17 @@ export default function SectionHeader({
 }: SectionHeaderProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const isDragging = useRef(false);
+
+  // Separate favorites from draggable albums
+  const favoritesAlbum = albums.find(a => a.id === 'favorites');
+  const draggableAlbums = albums.filter(a => a.id !== 'favorites');
+
+  const handleReorder = (newOrder: Album[]) => {
+    if (onAlbumsReorder) {
+      onAlbumsReorder(favoritesAlbum ? [favoritesAlbum, ...newOrder] : newOrder);
+    }
+  };
 
   // Get the active album info
   const activeAlbumInfo = albums.find(album => album.id === activeAlbum);
@@ -148,56 +163,99 @@ export default function SectionHeader({
 
         {/* Album Filter Links */}
         <motion.div
-          className="flex flex-wrap gap-4"
+          className="flex flex-wrap items-center gap-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
+          {/* "all" - always first, not draggable */}
           {categorySlug ? (
             <Link
               href={`/${categorySlug}`}
-              onClick={(e) => {
-                onAlbumChange('all');
-              }}
-              className={`text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''
-                }`}
+              onClick={() => onAlbumChange('all')}
+              className={`text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''}`}
             >
               all
             </Link>
           ) : (
             <button
               onClick={() => onAlbumChange('all')}
-              className={`text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''
-                }`}
+              className={`text-white hover:text-gray-300 transition-colors pb-1 ${activeAlbum === 'all' ? 'border-b-2 border-white' : ''}`}
             >
               all
             </button>
           )}
-          {albums.map((album) => {
-            const displayName = formatName(album.name) || formatName(album.id) || album.id || '';
-            const isActive = activeAlbum === album.id;
-            const commonClass = `text-white hover:text-gray-300 transition-colors pb-1 ${isActive ? 'border-b-2 border-white' : ''
-              }`;
-            const href = categorySlug ? `/${categorySlug}/${album.id}` : undefined;
-            return href ? (
+
+          {/* "favorites" - not draggable */}
+          {favoritesAlbum && (() => {
+            const isActive = activeAlbum === 'favorites';
+            const cls = `text-white hover:text-gray-300 transition-colors pb-1 ${isActive ? 'border-b-2 border-white' : ''}`;
+            return categorySlug ? (
               <Link
-                key={album.id}
-                href={href}
-                onClick={() => onAlbumChange(album.id)}
-                className={commonClass}
+                href={`/${categorySlug}/favorites`}
+                onClick={() => onAlbumChange('favorites')}
+                className={cls}
               >
-                {displayName}
+                favorites
               </Link>
             ) : (
-              <button
-                key={album.id}
-                onClick={() => onAlbumChange(album.id)}
-                className={commonClass}
-              >
-                {displayName}
+              <button onClick={() => onAlbumChange('favorites')} className={cls}>
+                favorites
               </button>
             );
-          })}
+          })()}
+
+          {/* Albums - draggable when authenticated */}
+          <Reorder.Group
+            axis="x"
+            values={draggableAlbums}
+            onReorder={handleReorder}
+            as="div"
+            className="flex flex-wrap gap-4"
+          >
+            {draggableAlbums.map((album) => {
+              const displayName = formatName(album.name) || formatName(album.id) || album.id || '';
+              const isActive = activeAlbum === album.id;
+              const commonClass = `text-white hover:text-gray-300 transition-colors pb-1 ${isActive ? 'border-b-2 border-white' : ''}`;
+              return (
+                <Reorder.Item
+                  key={album.id}
+                  value={album}
+                  as="div"
+                  dragListener={canReorder}
+                  style={canReorder ? { touchAction: 'none', userSelect: 'none' } : undefined}
+                  whileDrag={{ scale: 1.1, opacity: 0.8 }}
+                  onDragStart={() => { isDragging.current = true; }}
+                  onDragEnd={() => { requestAnimationFrame(() => { isDragging.current = false; }); }}
+                  className={canReorder ? 'cursor-grab active:cursor-grabbing' : ''}
+                >
+                  {canReorder ? (
+                    <span
+                      onClick={() => { if (!isDragging.current) onAlbumChange(album.id); }}
+                      className={commonClass + ' cursor-pointer'}
+                    >
+                      {displayName}
+                    </span>
+                  ) : categorySlug ? (
+                    <Link
+                      href={`/${categorySlug}/${album.id}`}
+                      onClick={() => onAlbumChange(album.id)}
+                      className={commonClass}
+                    >
+                      {displayName}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => onAlbumChange(album.id)}
+                      className={commonClass}
+                    >
+                      {displayName}
+                    </button>
+                  )}
+                </Reorder.Item>
+              );
+            })}
+          </Reorder.Group>
         </motion.div>
       </div>
     </div>

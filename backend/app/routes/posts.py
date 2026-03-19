@@ -3,7 +3,7 @@ import re
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_, and_, text
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
@@ -57,7 +57,9 @@ async def get_posts(
     if category:
         query = query.filter(Post.category == category)
     if album:
-        query = query.filter(Post.album == album)
+        query = query.filter(
+            or_(Post.album == album, Post.cross_post_albums.any(album))
+        )
     if tag:
         query = query.filter(Post.tags.contains([tag]))
     if is_major is not None:

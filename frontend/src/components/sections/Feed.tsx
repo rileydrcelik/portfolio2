@@ -9,6 +9,36 @@ import FeedSkeleton from '@/components/ui/FeedSkeleton';
 import { getPosts, Post, deletePost } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 
+// Hook for infinite scroll using IntersectionObserver
+function useInfiniteScroll(
+  onLoadMore: () => void,
+  hasMore: boolean
+) {
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const callbackRef = useRef(onLoadMore);
+  callbackRef.current = onLoadMore;
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          callbackRef.current();
+        }
+      },
+      { rootMargin: '600px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore]);
+
+  return sentinelRef;
+}
+
 // 9-column grid system: small items (2x3, 3x2, 2x2), large items (4x3, 3x4), and featured items (6 columns)
 const TILE_SHAPES = {
   // Small Content - Various aspect ratios
@@ -44,7 +74,7 @@ const MOBILE_TILE_SHAPES = {
 type TileShape = keyof typeof TILE_SHAPES;
 
 interface FeedItem {
-  id: number;
+  id: string;
   title: string;
   description: string;
   image: string;
@@ -132,29 +162,27 @@ const findClosestTileShape = (aspectRatio: number): TileShape => {
 
 // Function to convert Post objects to FeedItem objects (with image dimensions)
 const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
-  const feedItems: FeedItem[] = [];
-
-  for (let index = 0; index < posts.length; index++) {
-    const post = posts[index];
-
-    // Use thumbnail_url for the feed display
+  // Load all image dimensions in parallel for performance
+  const postData = posts.map(post => {
     const looksLikeText = post.category === 'bio' || (post.content_url && post.content_url.length > 0 && !/^https?:\/\//i.test(post.content_url));
     const fallbackImage = looksLikeText ? (post.thumbnail_url || '') : (post.thumbnail_url || post.content_url);
     const primaryGalleryImage = Array.isArray(post.gallery_urls) && post.gallery_urls.length > 0 ? post.gallery_urls[0] : undefined;
     const imageUrl = primaryGalleryImage || fallbackImage;
+    return { post, imageUrl, looksLikeText };
+  });
+
+  const dimensions = await Promise.all(postData.map(d => getImageDimensions(d.imageUrl)));
+
+  return postData.map(({ post, imageUrl, looksLikeText }, index) => {
     const contentUrl = post.content_url;
     const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(contentUrl);
-
-    // Get image dimensions to calculate aspect ratio
-    const dimensions = await getImageDimensions(imageUrl);
-    const aspectRatio = dimensions.width / dimensions.height;
+    const aspectRatio = dimensions[index].width / dimensions[index].height;
 
     // Determine tile shape
     let tileShape: TileShape;
     if (post.category === 'apparel') {
       tileShape = 'shop';
     } else if (post.is_major) {
-      // Featured posts (is_major) get 6-column tiles
       if (aspectRatio > 1.2) {
         tileShape = 'featured-landscape';
       } else if (aspectRatio < 0.8) {
@@ -163,21 +191,20 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
         tileShape = 'featured-square';
       }
     } else {
-      // Regular posts use the original aspect-ratio matching
       tileShape = findClosestTileShape(aspectRatio);
     }
 
-    feedItems.push({
-      id: parseInt(post.id.replace(/-/g, '').substring(0, 8), 16) || index + 1, // Convert UUID to number for ID
+    return {
+      id: post.id,
       title: post.title,
       description: post.description || '',
       image: imageUrl,
       category: post.category === 'apparel' ? 'shop' : post.category,
       tileShape: tileShape,
       album: post.album,
-      date: post.date, // Include the date from the post
-      postId: post.id, // Store the actual UUID for deletion
-      tags: post.tags || [], // Include tags from the post
+      date: post.date,
+      postId: post.id,
+      tags: post.tags || [],
       contentUrl,
       isAudio,
       slug: post.slug,
@@ -189,10 +216,8 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       rawPost: post,
       isActive: post.is_active,
       isFavorite: post.is_favorite,
-    });
-  }
-
-  return feedItems;
+    };
+  });
 };
 
 // Function to fetch posts from database (supports optional category and limit)
@@ -237,7 +262,7 @@ const generateFeedItems = async (directory: string, activeAlbum: string = 'all')
     const tileShape = findClosestTileShape(aspectRatio);
 
     feedItems.push({
-      id: index + 1,
+      id: `static-${index}`,
       title: fileName.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       description: `Creative work from ${directory.replace('_placeholders', '')}`,
       image: imageData.path,
@@ -287,7 +312,7 @@ const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 1
       const unitHeight = unitWidth; // Square units as base
 
       // Create occupancy grid (columns x rows)
-      const maxRows = 200;
+      const maxRows = 1000;
       const occupied = Array(maxRows).fill(null).map(() => Array(gridUnits).fill(false));
 
       const newPositions: Position[] = [];
@@ -393,6 +418,8 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const fetchLimit = limit ?? 50; // Default to 50 for pagination
   const previousUrlRef = useRef<string | null>(null);
+  const offsetRef = useRef(0); // Track API offset independently of feedItems.length
+  const isFetchingRef = useRef(false); // Ref-based guard to prevent concurrent fetches
   const { token: authToken, user } = useAuth();
 
   // Callback ref to measure width when element is mounted
@@ -410,6 +437,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
       setIsLoading(true);
       setFeedItems([]); // Reset items on filter change
+      offsetRef.current = 0;
 
       try {
         let items: FeedItem[];
@@ -435,7 +463,8 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           items = await convertPostsToFeedItems(posts);
           console.log('✅ Feed items loaded from database:', items.length, 'items');
 
-          setHasMore(items.length === fetchLimit);
+          offsetRef.current = posts.length;
+          setHasMore(posts.length === fetchLimit);
         } else {
           // Use static images - fetch all (no album filtering)
           items = await generateFeedItems(directory, activeAlbum);
@@ -455,15 +484,16 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     loadFeedItems();
   }, [directory, category, useDatabase, activeAlbum, activeTag, fetchLimit]);
 
-  const handleLoadMore = async () => {
-    if (!useDatabase || isLoading || isFetchingMore) return;
+  const handleLoadMore = useCallback(async () => {
+    if (!useDatabase || isLoading || isFetchingRef.current) return;
 
+    isFetchingRef.current = true;
     setIsFetchingMore(true);
     try {
       const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number; is_favorite?: boolean } = {
         category,
         limit: fetchLimit,
-        offset: feedItems.length
+        offset: offsetRef.current
       };
 
       if (activeAlbum !== 'all') {
@@ -476,18 +506,27 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       if (activeTag) params.tag = activeTag;
 
       const posts = await getPosts(params);
+      offsetRef.current += posts.length;
       const newItems = await convertPostsToFeedItems(posts);
 
-      setFeedItems(prev => [...prev, ...newItems]);
-      setHasMore(newItems.length === fetchLimit);
+      setFeedItems(prev => {
+        const existingIds = new Set(prev.map(item => item.id));
+        const unique = newItems.filter(item => !existingIds.has(item.id));
+        return [...prev, ...unique];
+      });
+      setHasMore(posts.length === fetchLimit);
     } catch (error) {
       console.error('❌ Error loading more items:', error);
     } finally {
+      isFetchingRef.current = false;
       setIsFetchingMore(false);
     }
-  };
+  }, [useDatabase, isLoading, category, fetchLimit, activeAlbum, activeTag]);
 
-  // Removed client-side filtering logic
+  const sentinelRef = useInfiniteScroll(
+    handleLoadMore,
+    hasMore && !isLoading && useDatabase
+  );
 
   const { positions, containerHeight } = use2DPacking(
     containerWidth > 0 ? feedItems : [],
@@ -583,7 +622,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
   return (
     <div className="bg-black">
-      <div className="w-full px-4 py-8">
+      <div className="w-full px-4 pt-8">
 
         {/* Measure width wrapper */}
         <div ref={containerRefCallback} className="w-full">
@@ -597,6 +636,10 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
               {positions.map((position, index) => {
                 const item = position.item;
                 if (!item) return null;
+
+                const detailHref = item.slug && item.category && item.album
+                  ? `/${encodeURIComponent(item.category)}/${encodeURIComponent(item.album)}/${encodeURIComponent(item.slug)}`
+                  : null;
 
                 return (
                   <motion.div
@@ -612,33 +655,42 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, amount: 0, margin: "200px" }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
-                    onClick={() => handleImageClick(item)}
                     whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
                     whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
                   >
-                    <ImageTile item={item} index={index} />
+                    {detailHref ? (
+                      <a
+                        href={detailHref}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleImageClick(item);
+                        }}
+                        className="block w-full h-full"
+                        draggable={false}
+                      >
+                        <ImageTile item={item} index={index} />
+                      </a>
+                    ) : (
+                      <div onClick={() => handleImageClick(item)} className="w-full h-full">
+                        <ImageTile item={item} index={index} />
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}
             </div>
           )}
+
+          {/* Infinite scroll sentinel - directly after grid, no gap */}
+          {hasMore && !isLoading && <div ref={sentinelRef} className="h-px" />}
+          {isFetchingMore && (
+            <div className="flex justify-center py-4">
+              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            </div>
+          )}
+          {!hasMore && !isLoading && <div className="h-8" />}
         </div>
       </div>
-
-      {/* Load More Button */}
-      {
-        hasMore && (
-          <div className="flex justify-center mt-12 mb-8">
-            <button
-              onClick={handleLoadMore}
-              disabled={isFetchingMore}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors duration-200 backdrop-blur-sm border border-white/10 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isFetchingMore ? 'Loading...' : 'Load More'}
-            </button>
-          </div>
-        )
-      }
 
       {/* Image Modal */}
       {
@@ -663,6 +715,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
             galleryUrls={selectedImage.galleryUrls}
             isActive={selectedImage.isActive}
             isFavorite={selectedImage.isFavorite}
+            crossPostAlbums={selectedImage.rawPost?.cross_post_albums}
             onDelete={useDatabase && authToken ? handleDeletePost : undefined}
             onUpdate={useDatabase && authToken ? handleUpdatePost : undefined}
             canEdit={Boolean(authToken && user)}

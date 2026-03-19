@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /d/dev2/rileydrcelik_portfolio -maxdepth 2 -type f -name package.json -o -name tsconfig.json -o -name astro.config.* -o -name next.config.* -o -name nuxt.config.*)",
+      "Bash(find /d/dev2/rileydrcelik_portfolio/frontend/src -type f -name *page* -o -name *list* -o -name *feed*)",
+      "Bash(xargs grep:*)",
+      "Bash(ls -la /d/dev2/rileydrcelik_portfolio/backend/venv/Scripts/uvicorn*)",
+      "Bash(grep -r \"draggable\\\\|dnd\\\\|react-dnd\\\\|react-beautiful\\\\|react-sortable\" D:/dev2/rileydrcelik_portfolio/frontend/src --include=*.ts --include=*.tsx)",
+      "Bash(PGPASSWORD=sCXYWlPvzBXrgYCiytsNLuDRTKdVHwhW psql -h switchback.proxy.rlwy.net -p 49555 -U postgres -d railway -c \"ALTER TABLE posts ADD COLUMN IF NOT EXISTS cross_post_albums TEXT[] NOT NULL DEFAULT '{}';\")"
+    ]
+  }
+}

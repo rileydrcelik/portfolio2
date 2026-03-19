@@ -22,5 +22,6 @@ class Post(Base):
     is_major = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, default=False)
     is_favorite = Column(Boolean, default=False)
+    cross_post_albums = Column(ARRAY(Text), nullable=False, default=list)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

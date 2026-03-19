@@ -19,6 +19,7 @@ class PostBase(BaseModel):
     gallery_urls: List[str] = Field(default_factory=list, description="Additional gallery images for apparel posts")
     is_active: bool = Field(default=False, description="Flag indicating whether the project is active")
     is_favorite: bool = Field(default=False, description="Flag indicating whether the post is a favorite")
+    cross_post_albums: List[str] = Field(default_factory=list, description="Additional album slugs this post appears in")
 
 class PostCreate(PostBase):
     slug: Optional[str] = Field(default=None, description="Custom slug override")
@@ -38,6 +39,7 @@ class PostUpdate(BaseModel):
     gallery_urls: Optional[List[str]] = None
     is_active: Optional[bool] = None
     is_favorite: Optional[bool] = None
+    cross_post_albums: Optional[List[str]] = None
     date: Optional[datetime] = None
     
     class Config:

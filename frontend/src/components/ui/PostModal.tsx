@@ -211,6 +211,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [showCreateAlbum, setShowCreateAlbum] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
   const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
+  const [crossPostAlbums, setCrossPostAlbums] = useState<string[]>([]);
 
   // Fetch unique albums from posts table when subject is selected
   useEffect(() => {
@@ -240,6 +241,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const handleSubjectSelect = (subjectId: string) => {
     setSelectedSubject(subjectId);
     setSelectedAlbum(''); // Reset album selection
+    setCrossPostAlbums([]);
     setShowCreateAlbum(false);
     setNewAlbumName('');
     setContentFile(null);
@@ -778,6 +780,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         is_major: isMajor,
         is_active: isActive,
         post_type: selectedSubject === 'bio' ? postType : undefined,
+        cross_post_albums: crossPostAlbums,
       };
 
       if (isShop) {
@@ -813,6 +816,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       setSplashImageFile(null);
       setSplashImagePreview('');
       setPrice('');
+      setCrossPostAlbums([]);
       setDate(getCurrentESTDateTime());
       setIsSubmitting(false);
       onClose();
@@ -951,7 +955,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                   {selectedSubject && (
                     <div>
                       <label className="block text-sm font-medium text-white/90 mb-3">
-                        Select Album
+                        Select Albums
                       </label>
 
                       {isLoadingAlbums ? (
@@ -959,22 +963,39 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                       ) : (
                         <div className="space-y-2">
                           {/* Existing Albums from Posts */}
-                          {albumNames.map((albumSlug) => (
+                          {albumNames.map((albumSlug) => {
+                            const isSelected = selectedAlbum === albumSlug || crossPostAlbums.includes(albumSlug);
+                            return (
                             <button
                               key={albumSlug}
                               type="button"
                               onClick={() => {
-                                setSelectedAlbum(albumSlug);
-                                setShowCreateAlbum(false);
+                                const isCurrentPrimary = selectedAlbum === albumSlug;
+                                const isCrossPost = crossPostAlbums.includes(albumSlug);
+                                if (isCurrentPrimary) {
+                                  const [newPrimary, ...rest] = crossPostAlbums;
+                                  setSelectedAlbum(newPrimary || '');
+                                  setCrossPostAlbums(rest || []);
+                                } else if (isCrossPost) {
+                                  setCrossPostAlbums(prev => prev.filter(a => a !== albumSlug));
+                                } else {
+                                  if (!selectedAlbum) {
+                                    setSelectedAlbum(albumSlug);
+                                  } else {
+                                    setCrossPostAlbums(prev => [...prev, albumSlug]);
+                                  }
+                                  setShowCreateAlbum(false);
+                                }
                               }}
-                              className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${selectedAlbum === albumSlug
+                              className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${isSelected
                                 ? 'border-white bg-white/25 text-white'
                                 : 'border-white/20 hover:border-white hover:text-white bg-white/5 text-white/60'
                                 }`}
                             >
                               {albumSlug}
                             </button>
-                          ))}
+                            );
+                          })}
 
                           {/* Create New Album Button */}
                           {!showCreateAlbum && (

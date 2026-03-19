@@ -32,6 +32,7 @@ interface ImageModalProps {
   post?: Pick<Post, 'content_url' | 'thumbnail_url' | 'splash_image_url' | 'gallery_urls'>;
   isActive?: boolean;
   isFavorite?: boolean;
+  crossPostAlbums?: string[];
   onUpdate?: (updatedPost: Post) => void;
   onExitComplete?: () => void;
 }
@@ -58,6 +59,7 @@ export default function ImageModal({
   post,
   isActive,
   isFavorite: initialIsFavorite = false,
+  crossPostAlbums,
   onUpdate,
   onExitComplete,
 }: ImageModalProps) {
@@ -607,6 +609,7 @@ export default function ImageModal({
                 contentUrl,
                 thumbnailUrl: post?.thumbnail_url,
                 slug,
+                crossPostAlbums: crossPostAlbums || [],
               }}
               onUpdate={(updatedPost) => {
                 if (onUpdate) onUpdate(updatedPost);

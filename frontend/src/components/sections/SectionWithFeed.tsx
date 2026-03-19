@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import SectionHeader from './SectionHeader';
 import Feed from './Feed';
 import { getPosts } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface Album {
   id: string;
@@ -27,6 +28,7 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
   const [albums, setAlbums] = useState<Album[]>(initialAlbums);
   const [totalCount, setTotalCount] = useState(0);
   const [availableTags, setAvailableTags] = useState<{ name: string; count: number }[]>([]);
+  const { token: authToken } = useAuth();
 
   useEffect(() => {
     setActiveAlbum(initialAlbum);
@@ -45,15 +47,20 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
           const albumLatestDates = new Map<string, number>();
 
           allPosts.forEach(post => {
-            const currentCount = albumCounts.get(post.album) || 0;
-            albumCounts.set(post.album, currentCount + 1);
-
-            // Track latest date (compare created_at or updated_at or date)
-            // Using updated_at for "last updated", falling back to created_at or date
             const postDate = new Date(post.updated_at || post.created_at || post.date).getTime();
-            const currentLatest = albumLatestDates.get(post.album) || 0;
-            if (postDate > currentLatest) {
-              albumLatestDates.set(post.album, postDate);
+
+            // Count in primary album
+            albumCounts.set(post.album, (albumCounts.get(post.album) || 0) + 1);
+            const primaryLatest = albumLatestDates.get(post.album) || 0;
+            if (postDate > primaryLatest) albumLatestDates.set(post.album, postDate);
+
+            // Count cross-posted albums (same subject, plain album slugs)
+            if (post.cross_post_albums) {
+              post.cross_post_albums.forEach(cpAlbum => {
+                albumCounts.set(cpAlbum, (albumCounts.get(cpAlbum) || 0) + 1);
+                const cpLatest = albumLatestDates.get(cpAlbum) || 0;
+                if (postDate > cpLatest) albumLatestDates.set(cpAlbum, postDate);
+              });
             }
           });
 
@@ -93,11 +100,25 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
             });
           }
 
+          // Apply saved order from localStorage if available
+          try {
+            const savedOrder = JSON.parse(localStorage.getItem(`albumOrder:${category}`) || 'null');
+            if (savedOrder && Array.isArray(savedOrder)) {
+              dynamicAlbums.sort((a, b) => {
+                const indexA = savedOrder.indexOf(a.id);
+                const indexB = savedOrder.indexOf(b.id);
+                if (indexA === -1 && indexB === -1) return 0;
+                if (indexA === -1) return 1;
+                if (indexB === -1) return -1;
+                return indexA - indexB;
+              });
+            }
+          } catch { /* ignore invalid saved order */ }
+
           setAlbums(dynamicAlbums);
 
-          // Calculate total count
-          const total = Array.from(albumCounts.values()).reduce((sum, count) => sum + count, 0);
-          setTotalCount(total);
+          // Total count = unique posts in this category (not sum of album counts)
+          setTotalCount(allPosts.length);
 
           // Extract all unique tags with counts
           const tagCounts = new Map<string, number>();
@@ -134,6 +155,13 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
     }
   }, [useDatabase, category]);
 
+  const handleAlbumsReorder = useCallback((newAlbums: Album[]) => {
+    setAlbums(newAlbums);
+    if (category) {
+      localStorage.setItem(`albumOrder:${category}`, JSON.stringify(newAlbums.map(a => a.id)));
+    }
+  }, [category]);
+
   return (
     <div className="min-h-screen bg-black">
       {/* Section Header with Album Filtering */}
@@ -143,6 +171,8 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
         albums={albums}
         activeAlbum={activeAlbum}
         onAlbumChange={setActiveAlbum}
+        onAlbumsReorder={handleAlbumsReorder}
+        canReorder={!!authToken}
         tags={availableTags}
         activeTag={activeTag}
         onTagChange={setActiveTag}

@@ -76,6 +76,7 @@ export interface Post {
   updated_at: string;
   is_active?: boolean;
   is_favorite?: boolean;
+  cross_post_albums?: string[];
 }
 
 export interface PostCreate {
@@ -96,6 +97,7 @@ export interface PostCreate {
   is_active?: boolean;
   is_favorite?: boolean;
   post_type?: string;
+  cross_post_albums?: string[];
 }
 
 export async function getPosts(params?: {

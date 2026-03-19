@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, ChevronDown } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import { type PostCreate, updatePost, getAlbumsByCategory, uploadImage } from '@/lib/api';
 import MarkdownEditor from './MarkdownEditor';
 import { useAuth } from '@/providers/AuthProvider';
@@ -23,6 +23,7 @@ interface EditPostModalProps {
         contentUrl?: string;
         thumbnailUrl?: string | null;
         slug?: string;
+        crossPostAlbums?: string[];
     };
     onUpdate: (updatedPost: any) => void;
 }
@@ -37,7 +38,7 @@ export default function EditPostModal({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState<Partial<PostCreate>>({
+    const [formData, setFormData] = useState<Partial<PostCreate> & { cross_post_albums?: string[] }>({
         title: post.title,
         description: post.description || '',
         category: post.category,
@@ -47,12 +48,12 @@ export default function EditPostModal({
         is_active: post.isActive,
         is_major: post.isMajor,
         slug: post.slug,
+        cross_post_albums: post.crossPostAlbums || [],
     });
 
     const [tagInput, setTagInput] = useState('');
     const [albumOptions, setAlbumOptions] = useState<string[]>([]);
-    const [isAlbumDropdownOpen, setIsAlbumDropdownOpen] = useState(false);
-    const [articleContent, setArticleContent] = useState(post.contentUrl || '');
+const [articleContent, setArticleContent] = useState(post.contentUrl || '');
 
     const isShop = formData.category === 'apparel';
     const isProject = formData.category === 'projects';
@@ -263,54 +264,37 @@ export default function EditPostModal({
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-white/90 mb-2">Album</label>
-                                            <div className="relative">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsAlbumDropdownOpen(!isAlbumDropdownOpen)}
-                                                    className="w-full p-3 border border-white/30 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 text-left flex justify-between items-center"
-                                                >
-                                                    <span className="text-sm">{formData.album || "No Album"}</span>
-                                                    <ChevronDown className={`w-4 h-4 transition-transform ${isAlbumDropdownOpen ? 'rotate-180' : ''}`} />
-                                                </button>
-
-                                                <AnimatePresence>
-                                                    {isAlbumDropdownOpen && (
-                                                        <>
-                                                            <div className="fixed inset-0 z-10" onClick={() => setIsAlbumDropdownOpen(false)} />
-                                                            <motion.div
-                                                                initial={{ opacity: 0, y: -10 }}
-                                                                animate={{ opacity: 1, y: 0 }}
-                                                                exit={{ opacity: 0, y: -10 }}
-                                                                className="absolute z-20 w-full mt-2 overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto"
-                                                            >
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setFormData(prev => ({ ...prev, album: '' }));
-                                                                        setIsAlbumDropdownOpen(false);
-                                                                    }}
-                                                                    className="w-full px-3 py-2 text-sm text-left hover:bg-white/10 transition-colors text-white/50 border-b border-white/10"
-                                                                >
-                                                                    No Album
-                                                                </button>
-                                                                {albumOptions.map(opt => (
-                                                                    <button
-                                                                        key={opt}
-                                                                        type="button"
-                                                                        onClick={() => {
+                                            <label className="block text-sm font-medium text-white/90 mb-2">Albums</label>
+                                            <div className="space-y-1">
+                                                {albumOptions.map(opt => {
+                                                    const isSelected = formData.album === opt || formData.cross_post_albums?.includes(opt);
+                                                    return (
+                                                        <label key={opt} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected || false}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        if (!formData.album) {
                                                                             setFormData(prev => ({ ...prev, album: opt }));
-                                                                            setIsAlbumDropdownOpen(false);
-                                                                        }}
-                                                                        className={`w-full px-3 py-2 text-sm text-left hover:bg-white/10 transition-colors ${formData.album === opt ? 'text-white bg-white/10' : 'text-white'}`}
-                                                                    >
-                                                                        {opt}
-                                                                    </button>
-                                                                ))}
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </AnimatePresence>
+                                                                        } else {
+                                                                            setFormData(prev => ({ ...prev, cross_post_albums: [...(prev.cross_post_albums || []), opt] }));
+                                                                        }
+                                                                    } else {
+                                                                        if (formData.album === opt) {
+                                                                            const [newPrimary, ...rest] = formData.cross_post_albums || [];
+                                                                            setFormData(prev => ({ ...prev, album: newPrimary || '', cross_post_albums: rest }));
+                                                                        } else {
+                                                                            setFormData(prev => ({ ...prev, cross_post_albums: (prev.cross_post_albums || []).filter(a => a !== opt) }));
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="w-4 h-4 rounded border-white/30 bg-white/10 text-white accent-white"
+                                                            />
+                                                            <span className="text-sm text-white/80">{opt}</span>
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
@@ -366,6 +350,7 @@ export default function EditPostModal({
                                             )}
                                         </div>
                                     </div>
+
 
                                     {/* Toggles */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
