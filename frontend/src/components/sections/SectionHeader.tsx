@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 
 import { Filter } from 'lucide-react';
@@ -42,6 +43,7 @@ export default function SectionHeader({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const isDragging = useRef(false);
+  const router = useRouter();
 
   // Separate favorites from draggable albums
   const favoritesAlbum = albums.find(a => a.id === 'favorites');
@@ -231,7 +233,12 @@ export default function SectionHeader({
                 >
                   {canReorder ? (
                     <span
-                      onClick={() => { if (!isDragging.current) onAlbumChange(album.id); }}
+                      onClick={() => {
+                        if (!isDragging.current) {
+                          onAlbumChange(album.id);
+                          if (categorySlug) router.push(`/${categorySlug}/${album.id}`);
+                        }
+                      }}
                       className={commonClass + ' cursor-pointer'}
                     >
                       {displayName}
