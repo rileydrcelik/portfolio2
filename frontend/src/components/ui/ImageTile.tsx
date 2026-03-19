@@ -5,7 +5,7 @@ import Image from 'next/image';
 
 interface ImageTileProps {
   item: {
-    id: number;
+    id: string;
     title: string;
     description: string;
     image: string;
