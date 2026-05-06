@@ -26,9 +26,6 @@ export const metadata: Metadata = {
   authors: [{ name: "Riley Drcelik" }],
   creator: "Riley Drcelik",
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "en_US",

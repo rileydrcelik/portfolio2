@@ -18,13 +18,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 0.8,
         },
         {
-            url: `${BASE_URL}/artwork`,
+            url: `${BASE_URL}/art`,
             lastModified: new Date(),
             changeFrequency: 'weekly' as const,
             priority: 0.9,
         },
         {
-            url: `${BASE_URL}/photography`,
+            url: `${BASE_URL}/photo`,
             lastModified: new Date(),
             changeFrequency: 'weekly' as const,
             priority: 0.9,
