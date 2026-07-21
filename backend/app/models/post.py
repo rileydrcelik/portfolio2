@@ -23,5 +23,9 @@ class Post(Base):
     is_active = Column(Boolean, default=False)
     is_favorite = Column(Boolean, default=False)
     cross_post_albums = Column(ARRAY(Text), nullable=False, default=list)
+    # Provenance for mirrored posts: 'w_notes' + the upstream note id. NULL for
+    # posts authored here. The pair is uniquely indexed so ingest can upsert.
+    source = Column(String(50), nullable=True)
+    source_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import ImageTile from '@/components/ui/ImageTile';
+import NoteTile from '@/components/ui/NoteTile';
+import { noteExcerpt } from '@/lib/html-text';
 import { imageSets } from '@/data/imageData';
 import ImageModal from '@/components/ui/ImageModal';
 import FeedSkeleton from '@/components/ui/FeedSkeleton';
@@ -160,6 +162,17 @@ const findClosestTileShape = (aspectRatio: number): TileShape => {
   return closestShape;
 };
 
+// Notes have no image to measure, so their tile is sized by how much text it has
+// to hold — a one-liner in a tall card is mostly empty space, and a long note in
+// a small square is all ellipsis.
+const findNoteTileShape = (post: Post): TileShape => {
+  const length = noteExcerpt(post.content_url || '', 10000).length;
+  if (post.is_major) return 'featured-portrait';
+  if (length < 120) return 'minor-square';
+  if (length < 400) return 'minor-landscape';
+  return 'major-portrait';
+};
+
 // Function to convert Post objects to FeedItem objects (with image dimensions)
 const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
   // Load all image dimensions in parallel for performance
@@ -171,7 +184,15 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     return { post, imageUrl, looksLikeText };
   });
 
-  const dimensions = await Promise.all(postData.map(d => getImageDimensions(d.imageUrl)));
+  // Notes carry no image; skip the measurement entirely rather than waiting on an
+  // Image load that can only ever fall back to 1x1.
+  const dimensions = await Promise.all(
+    postData.map(d =>
+      d.post.category === 'notes'
+        ? Promise.resolve({ width: 1, height: 1 })
+        : getImageDimensions(d.imageUrl)
+    )
+  );
 
   return postData.map(({ post, imageUrl, looksLikeText }, index) => {
     const contentUrl = post.content_url;
@@ -182,6 +203,8 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     let tileShape: TileShape;
     if (post.category === 'apparel') {
       tileShape = 'shop';
+    } else if (post.category === 'notes') {
+      tileShape = findNoteTileShape(post);
     } else if (post.is_major) {
       if (aspectRatio > 1.2) {
         tileShape = 'featured-landscape';
@@ -641,6 +664,12 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
                   ? `/${encodeURIComponent(item.category)}/${encodeURIComponent(item.album)}/${encodeURIComponent(item.slug)}`
                   : null;
 
+                // Notes are text-first and get a typographic card; everything
+                // else leads with its image.
+                const Tile = item.category === 'notes'
+                  ? <NoteTile item={item} />
+                  : <ImageTile item={item} index={index} />;
+
                 return (
                   <motion.div
                     key={item.id}
@@ -668,11 +697,11 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
                         className="block w-full h-full"
                         draggable={false}
                       >
-                        <ImageTile item={item} index={index} />
+                        {Tile}
                       </a>
                     ) : (
                       <div onClick={() => handleImageClick(item)} className="w-full h-full">
-                        <ImageTile item={item} index={index} />
+                        {Tile}
                       </div>
                     )}
                   </motion.div>

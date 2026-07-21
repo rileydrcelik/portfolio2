@@ -119,6 +119,7 @@ export default function ImageModal({
   }, [price]);
 
   const isProject = category === 'projects';
+  const isNote = category === 'notes';
   const isBio = category === 'bio' || isText;
   const isShop = category === 'apparel';
 
@@ -378,6 +379,16 @@ export default function ImageModal({
                               className="w-full h-auto"
                             />
                           </div>
+                        ) : isNote ? (
+                          // Note bodies are rich-text HTML from the w_notes
+                          // editor, not markdown, so ReactMarkdown would render
+                          // them as escaped tags. The markup was sanitized
+                          // server-side by the ingest endpoint (nh3, strict tag
+                          // allowlist), which is what makes this safe to inject.
+                          <div
+                            className="prose prose-invert font-sans prose-headings:font-sans prose-p:text-white/80"
+                            dangerouslySetInnerHTML={{ __html: articleContent }}
+                          />
                         ) : (
                           <div className="prose prose-invert font-sans prose-headings:font-sans prose-p:text-white/80">
                             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
