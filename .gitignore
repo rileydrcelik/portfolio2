@@ -26,6 +26,11 @@ frontend/node_modules/
 backend/venv/
 backend/.venv/
 
+# python bytecode + caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 # production
 /build
 
