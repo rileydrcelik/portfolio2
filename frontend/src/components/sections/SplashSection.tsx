@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDownIcon, HomeIcon, UserIcon, PaintBrushIcon, CameraIcon, DocumentTextIcon, CodeBracketIcon, ShoppingBagIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, HomeIcon, UserIcon, PaintBrushIcon, CameraIcon, MusicalNoteIcon, CodeBracketIcon, ShoppingBagIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Tooltip } from '@chakra-ui/react';
@@ -302,9 +302,9 @@ export default function SplashSection() {
               offset={[0, 20]}
               bg="transparent"
               p={0}
-              label={<GlassTooltipLabel text="Notes" />}
+              label={<GlassTooltipLabel text="Music" />}
             >
-              <Link href="/notes"><DocumentTextIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
+              <Link href="/music"><MusicalNoteIcon className="w-6 h-6 text-white/70 hover:text-white transition-colors cursor-pointer" /></Link>
             </Tooltip>
             <Tooltip
               placement="right"

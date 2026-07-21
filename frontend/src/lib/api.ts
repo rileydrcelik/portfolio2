@@ -382,3 +382,52 @@ export async function createAlbum(album: CreateAlbumRequest, authToken?: string)
   }
   return response.json();
 }
+
+// ---------------------------------------------------------------------------
+// Embedded notes (w_notes)
+// ---------------------------------------------------------------------------
+
+/** One row in the admin's note picker. */
+export interface AvailableNote {
+  id: string;
+  title: string;
+  /** Plain-text preview, so the list renders without parsing rich-text HTML. */
+  excerpt: string;
+  folder?: string | null;
+  updated_at: number;
+}
+
+/**
+ * Notes available to embed. Proxied by our backend, which holds the w_notes
+ * credential — the browser never sees it.
+ */
+export async function getAvailableNotes(authToken?: string): Promise<AvailableNote[]> {
+  const response = await fetch(`${API_URL}/api/notes/available`, {
+    headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Could not load notes');
+  }
+  return response.json();
+}
+
+/** Place a note as a post inside the chosen subject. */
+export async function embedNote(
+  payload: { note_id: string; category: string; album: string; is_major?: boolean; tags?: string[] },
+  authToken?: string,
+): Promise<Post> {
+  const response = await fetch(`${API_URL}/api/notes/embed`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Failed to embed note');
+  }
+  return response.json();
+}

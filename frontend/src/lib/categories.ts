@@ -20,10 +20,10 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     directory: 'photo_placeholders',
     slug: 'photo',
   },
-  notes: {
-    title: 'Notes',
-    directory: 'notes',
-    slug: 'notes',
+  music: {
+    title: 'Music',
+    directory: 'music_placeholders',
+    slug: 'music',
   },
   projects: {
     title: 'Projects',

@@ -12,6 +12,7 @@ interface PostModalClientProps {
     date?: string;
     tags?: string[];
     content_url: string;
+    post_type?: string;
     thumbnail_url: string;
     splash_image_url?: string | null;
     slug: string;
@@ -71,6 +72,7 @@ export default function PostModalClient({ post: initialPost, fallbackHref }: Pos
         category={post.category}
         album={post.album}
         isText={Boolean(looksLikeText && !imageCandidate && post.category !== 'projects')}
+        postType={post.post_type}
         price={post.price ?? null}
         galleryUrls={post.gallery_urls ?? undefined}
         postId={post.id}

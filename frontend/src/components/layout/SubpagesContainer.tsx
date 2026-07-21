@@ -7,7 +7,7 @@ import { Tooltip } from '@chakra-ui/react';
 import {
   PaintBrushIcon,
   CameraIcon,
-  DocumentTextIcon,
+  MusicalNoteIcon,
   CodeBracketIcon,
   ShoppingBagIcon,
   UserIcon,
@@ -26,7 +26,7 @@ interface NavigationItem {
 const subpages: NavigationItem[] = [
   { id: 'art', name: 'Art', icon: PaintBrushIcon, href: '/art' },
   { id: 'photography', name: 'Photography', icon: CameraIcon, href: '/photo' },
-  { id: 'notes', name: 'Notes', icon: DocumentTextIcon, href: '/notes' },
+  { id: 'music', name: 'Music', icon: MusicalNoteIcon, href: '/music' },
   { id: 'projects', name: 'Projects', icon: CodeBracketIcon, href: '/projects' },
   { id: 'shop', name: 'Shop', icon: ShoppingBagIcon, href: '/shop' },
 ];

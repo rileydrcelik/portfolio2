@@ -16,7 +16,7 @@ import {
   PaperClipIcon,
   SpeakerWaveIcon,
 } from '@heroicons/react/24/outline';
-import { createPost, uploadImage, getAlbumsByCategory, createAlbum, type PostCreate } from '@/lib/api';
+import { getAvailableNotes, embedNote, type AvailableNote, createPost, uploadImage, getAlbumsByCategory, createAlbum, type PostCreate } from '@/lib/api';
 import MarkdownEditor from './MarkdownEditor';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -179,6 +179,14 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [postType, setPostType] = useState('text'); // 'text', 'photo', 'audio', 'video', 'file'
+  // Embedding a w_notes note instead of uploading content. The note lives in
+  // whichever subject is selected — it is a post type, not a subject of its own.
+  const [embedMode, setEmbedMode] = useState(false);
+  const [availableNotes, setAvailableNotes] = useState<AvailableNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [selectedNoteId, setSelectedNoteId] = useState<string>('');
+  const [noteFilter, setNoteFilter] = useState('');
   const [contentUrl, setContentUrl] = useState('');
   const [contentImagePreview, setContentImagePreview] = useState<string>('');
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
@@ -548,6 +556,21 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     e.target.value = '';
   };
 
+  // Load the picker list the first time embedding is switched on. Failures are
+  // surfaced inline rather than thrown: the notes service being unreachable
+  // shouldn't take down the whole create dialog.
+  useEffect(() => {
+    if (!embedMode || availableNotes.length > 0 || !authToken) return;
+    let cancelled = false;
+    setNotesLoading(true);
+    setNotesError(null);
+    getAvailableNotes(authToken)
+      .then((notes) => { if (!cancelled) setAvailableNotes(notes); })
+      .catch((err) => { if (!cancelled) setNotesError(err?.message || 'Could not load notes'); })
+      .finally(() => { if (!cancelled) setNotesLoading(false); });
+    return () => { cancelled = true; };
+  }, [embedMode, availableNotes.length, authToken]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('[PostModal] Form submission started');
@@ -557,6 +580,32 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
     if (!authToken) {
       setError('You must be signed in to create a post.');
       setIsSubmitting(false);
+      return;
+    }
+
+    // Embedding places an existing note: no file, no upload, no content fields.
+    // The body is fetched and sanitized server-side, so nothing to send but the
+    // note id and where it goes.
+    if (embedMode) {
+      try {
+        if (!selectedNoteId) {
+          setError('Pick a note to embed.');
+          setIsSubmitting(false);
+          return;
+        }
+        const album = selectedAlbum || albumNames[0] || 'notes';
+        const created = await embedNote(
+          { note_id: selectedNoteId, category: selectedSubject, album, is_major: isMajor, tags },
+          authToken,
+        );
+        console.log('[PostModal] Note embedded:', created.slug);
+        onClose();
+        window.location.reload();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to embed note');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -917,6 +966,83 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         </button>
                       ))}
                     </div>
+                    {/* Embed an existing w_notes note into this subject. Offered
+                        for every subject except the shop, where a post is a
+                        product rather than content. */}
+                    {selectedSubject && selectedSubject !== 'shop' && (
+                      <div className="mt-6">
+                        <button
+                          type="button"
+                          onClick={() => { setEmbedMode(!embedMode); setSelectedNoteId(''); }}
+                          className={`w-full p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 ${embedMode
+                            ? 'border-white bg-white/20 text-white'
+                            : 'border-white/20 hover:border-white/50 bg-white/5 text-white/60'
+                            }`}
+                        >
+                          <DocumentTextIcon className="w-5 h-5" />
+                          <span className="text-sm font-medium">
+                            {embedMode ? 'Embedding a note' : 'Embed a note'}
+                          </span>
+                        </button>
+
+                        {embedMode && (
+                          <div className="mt-3">
+                            {notesLoading && (
+                              <p className="text-sm text-white/50 py-3">Loading notes…</p>
+                            )}
+                            {notesError && (
+                              <p className="text-sm text-red-400 py-3">{notesError}</p>
+                            )}
+                            {!notesLoading && !notesError && (
+                              <>
+                                <input
+                                  type="text"
+                                  value={noteFilter}
+                                  onChange={(e) => setNoteFilter(e.target.value)}
+                                  placeholder="Search notes…"
+                                  className="w-full mb-2 px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/40 text-sm"
+                                />
+                                <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                                  {availableNotes
+                                    .filter((n) => {
+                                      const q = noteFilter.trim().toLowerCase();
+                                      if (!q) return true;
+                                      return (
+                                        n.title.toLowerCase().includes(q) ||
+                                        n.excerpt.toLowerCase().includes(q)
+                                      );
+                                    })
+                                    .map((note) => (
+                                      <button
+                                        key={note.id}
+                                        type="button"
+                                        onClick={() => setSelectedNoteId(note.id)}
+                                        className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedNoteId === note.id
+                                          ? 'border-white bg-white/20'
+                                          : 'border-white/10 hover:border-white/30 bg-white/5'
+                                          }`}
+                                      >
+                                        <div className="text-sm font-medium text-white truncate">
+                                          {note.title}
+                                        </div>
+                                        {note.excerpt && (
+                                          <div className="text-xs text-white/50 line-clamp-2 mt-0.5">
+                                            {note.excerpt}
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  {availableNotes.length === 0 && (
+                                    <p className="text-sm text-white/40 py-3">No notes available.</p>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Post Type Selection for Bio */}
                     {selectedSubject === 'bio' && (
                       <div className="mt-6 mb-6">
@@ -1464,6 +1590,12 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                     <button
                       type="submit"
                       disabled={
+                        // Embedding needs a subject, an album and a chosen note
+                        // — no title, no file, none of the upload validation,
+                        // since the body and title come from the note itself.
+                        embedMode
+                          ? !selectedSubject || !selectedAlbum || !selectedNoteId || isSubmitting
+                          :
                         !selectedSubject ||
                         !selectedAlbum ||
                         !title ||

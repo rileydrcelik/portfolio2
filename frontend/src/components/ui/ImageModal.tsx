@@ -26,6 +26,8 @@ interface ImageModalProps {
   category?: string;
   album?: string;
   isText?: boolean;
+  /** Post type from the database; 'note' marks an embedded w_notes note. */
+  postType?: string;
   price?: number | null;
   galleryUrls?: string[];
   canEdit?: boolean;
@@ -53,6 +55,7 @@ export default function ImageModal({
   category,
   album,
   isText,
+  postType,
   price,
   galleryUrls,
   canEdit = false,
@@ -119,7 +122,9 @@ export default function ImageModal({
   }, [price]);
 
   const isProject = category === 'projects';
-  const isNote = category === 'notes';
+  // An embedded note is flagged by post_type, not category — it can live in
+  // any subject now, so the category tells us nothing about how to render it.
+  const isNote = postType === 'note';
   const isBio = category === 'bio' || isText;
   const isShop = category === 'apparel';
 

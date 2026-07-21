@@ -25,6 +25,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional
 
+import httpx
 import nh3
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -32,7 +33,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.post import Post
+from app.schemas.post import PostResponse
 from app.routes.posts import generate_unique_slug
+from app.lib.firebase_auth import verify_firebase_token
 
 logger = logging.getLogger(__name__)
 
@@ -117,47 +120,42 @@ def _to_datetime(epoch_ms: int) -> datetime:
 
 @router.post("/ingest", dependencies=[Depends(require_ingest_secret)])
 async def ingest_note(payload: NoteIngest, db: Session = Depends(get_db)):
-    """Create or update the post mirroring a published note."""
+    """Refresh the post(s) embedding this note.
+
+    **Update-only.** Where a note gets placed — which subject, which album — is
+    decided in the portfolio admin, not in the notes app, so this never creates
+    a post. A note that has not been embedded anywhere simply has nothing to
+    update, and w_notes pushes every edit without knowing which notes are on the
+    site; creating here would put unplaced notes on the site behind your back.
+
+    A note can be embedded in more than one place, so every matching post is
+    refreshed.
+    """
+    posts = (
+        db.query(Post)
+        .filter(Post.source == SOURCE, Post.source_id == payload.source_id)
+        .all()
+    )
+    if not posts:
+        # The overwhelmingly common case: an edit to a note nobody embedded.
+        # 404 rather than an error — the caller treats it as "nothing to do".
+        raise HTTPException(status_code=404, detail="Note is not embedded anywhere")
+
     body = sanitize_body(payload.body_html)
     title = payload.title.strip() or "Untitled note"
 
-    post = (
-        db.query(Post)
-        .filter(Post.source == SOURCE, Post.source_id == payload.source_id)
-        .first()
-    )
-
-    if post is None:
-        post = Post(
-            source=SOURCE,
-            source_id=payload.source_id,
-            category=CATEGORY,
-            slug=generate_unique_slug(title, db),
-            # Text posts store their content inline rather than as an S3 URL;
-            # the feed treats a non-http content_url as text (see Feed.tsx).
-            # thumbnail_url is NOT NULL, and empty is what marks "no image".
-            content_url=body,
-            thumbnail_url="",
-            post_type="text",
-            created_at=_to_datetime(payload.created_at_ms),
-        )
-        db.add(post)
-    elif post.title != title:
-        # Only re-slug when the title actually changed — a note edited ten times
-        # should keep one stable URL rather than shedding a new one each save.
-        post.slug = generate_unique_slug(title, db, existing_post_id=post.id)
-
-    post.title = title
-    post.content_url = body
-    post.album = payload.album or "notes"
-    post.is_favorite = payload.is_favorite
-    # Sorting key for the feed: an edit republishes the note to the top.
-    post.date = _to_datetime(payload.updated_at_ms)
-    post.is_active = True
+    for post in posts:
+        if post.title != title:
+            # Only re-slug when the title actually changed — a note edited ten
+            # times should keep one stable URL, not shed a new one each save.
+            post.slug = generate_unique_slug(title, db, existing_post_id=post.id)
+        post.title = title
+        post.content_url = body
+        # Sorting key for the feed: an edit floats the post back to the top.
+        post.date = _to_datetime(payload.updated_at_ms)
 
     db.commit()
-    db.refresh(post)
-    return {"id": str(post.id), "slug": post.slug, "status": "ok"}
+    return {"updated": len(posts), "status": "ok"}
 
 
 @router.delete("/ingest/{source_id}", dependencies=[Depends(require_ingest_secret)])
@@ -181,3 +179,106 @@ async def unpublish_note(source_id: str, db: Session = Depends(get_db)):
     db.delete(post)
     db.commit()
     return {"status": "deleted"}
+
+
+# ---------------------------------------------------------------------------
+# Note picker + embedding (admin-facing)
+# ---------------------------------------------------------------------------
+#
+# The admin UI runs in a browser, so it must never hold the shared secret. These
+# routes authenticate the human with Firebase (like every other admin route) and
+# then call w_notes server-side with the secret. The browser only ever sees note
+# titles and bodies, never the credential.
+
+W_NOTES_BASE = os.getenv("W_NOTES_API_BASE", "")
+_TIMEOUT = httpx.Timeout(10.0)
+
+
+def _w_notes_client() -> httpx.AsyncClient:
+    """Client pointed at the w_notes read API, or 503 if it isn't configured."""
+    secret = os.getenv("NOTES_INGEST_SECRET", "")
+    if not W_NOTES_BASE or not secret:
+        raise HTTPException(
+            status_code=503,
+            detail="Note embedding is not configured (W_NOTES_API_BASE / NOTES_INGEST_SECRET)",
+        )
+    return httpx.AsyncClient(
+        base_url=W_NOTES_BASE.rstrip("/"),
+        timeout=_TIMEOUT,
+        headers={"X-Ingest-Secret": secret},
+    )
+
+
+class EmbedRequest(BaseModel):
+    note_id: str = Field(..., description="w_notes note id to embed")
+    category: str = Field(..., description="Subject the note is filed under")
+    album: str = Field(..., max_length=100)
+    is_major: bool = False
+    tags: list[str] = Field(default_factory=list)
+
+
+@router.get("/available")
+async def list_available_notes(current_user=Depends(verify_firebase_token)):
+    """The note picker's list, proxied from w_notes."""
+    async with _w_notes_client() as client:
+        try:
+            response = await client.get("/embed/notes")
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.warning("[notes] could not reach w_notes: %s", exc)
+            raise HTTPException(status_code=502, detail="Could not reach the notes service") from exc
+    return response.json()
+
+
+@router.post("/embed", response_model=PostResponse)
+async def embed_note(
+    payload: EmbedRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(verify_firebase_token),
+):
+    """Place a note as a post inside the chosen subject.
+
+    This is the only path that *creates* a note-backed post; the ingest endpoint
+    only ever refreshes one. The body is fetched server-side and sanitized here,
+    on arrival, before it is stored.
+    """
+    async with _w_notes_client() as client:
+        try:
+            response = await client.get(f"/embed/notes/{payload.note_id}")
+            if response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Note not found")
+            response.raise_for_status()
+        except HTTPException:
+            raise
+        except httpx.HTTPError as exc:
+            logger.warning("[notes] could not fetch note: %s", exc)
+            raise HTTPException(status_code=502, detail="Could not reach the notes service") from exc
+
+    note = response.json()
+    title = (note.get("title") or "").strip() or "Untitled note"
+    body = sanitize_body(note.get("body_html") or "")
+    when = _to_datetime(note.get("updated_at") or 0)
+
+    post = Post(
+        source=SOURCE,
+        source_id=payload.note_id,
+        category=payload.category,
+        album=payload.album,
+        title=title,
+        slug=generate_unique_slug(title, db),
+        # Text posts store content inline rather than as an S3 URL; the feed
+        # treats a non-http content_url as text. thumbnail_url is NOT NULL, and
+        # empty is what marks "no image".
+        content_url=body,
+        thumbnail_url="",
+        post_type="note",
+        date=when,
+        created_at=when,
+        tags=payload.tags,
+        is_major=payload.is_major,
+        is_active=True,
+    )
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+    return post

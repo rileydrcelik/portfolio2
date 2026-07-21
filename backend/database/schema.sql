@@ -126,7 +126,7 @@ CREATE TABLE posts (
 
 ALTER TABLE posts
     ADD CONSTRAINT posts_category_check
-        CHECK (category IN ('art', 'photo', 'projects', 'bio', 'apparel', 'notes'));
+        CHECK (category IN ('art', 'photo', 'music', 'projects', 'bio', 'apparel'));
 
 -- Indexes for better performance
 CREATE INDEX idx_subjects_slug ON subjects(slug);

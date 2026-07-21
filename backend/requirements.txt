@@ -11,3 +11,5 @@ Pillow==11.0.0
 # HTML sanitizer for rich-text note bodies ingested from w_notes. Rust
 # (ammonia) bindings; the maintained successor to bleach.
 nh3==0.2.18
+# Server-to-server calls to the w_notes read API (note picker + embed).
+httpx==0.27.2

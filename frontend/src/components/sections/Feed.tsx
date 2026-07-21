@@ -97,6 +97,8 @@ interface FeedItem {
   rawPost?: Post;
   isActive?: boolean;
   isFavorite?: boolean;
+  /** An embedded w_notes note: rendered as a typographic card, not an image. */
+  isNote?: boolean;
 }
 
 interface FeedProps {
@@ -162,7 +164,8 @@ const findClosestTileShape = (aspectRatio: number): TileShape => {
   return closestShape;
 };
 
-// Notes have no image to measure, so their tile is sized by how much text it has
+// Embedded notes have no image to measure, so the tile is sized by how much text
+// it has
 // to hold — a one-liner in a tall card is mostly empty space, and a long note in
 // a small square is all ellipsis.
 const findNoteTileShape = (post: Post): TileShape => {
@@ -188,7 +191,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
   // Image load that can only ever fall back to 1x1.
   const dimensions = await Promise.all(
     postData.map(d =>
-      d.post.category === 'notes'
+      d.post.post_type === 'note'
         ? Promise.resolve({ width: 1, height: 1 })
         : getImageDimensions(d.imageUrl)
     )
@@ -203,7 +206,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
     let tileShape: TileShape;
     if (post.category === 'apparel') {
       tileShape = 'shop';
-    } else if (post.category === 'notes') {
+    } else if (post.post_type === 'note') {
       tileShape = findNoteTileShape(post);
     } else if (post.is_major) {
       if (aspectRatio > 1.2) {
@@ -239,6 +242,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       rawPost: post,
       isActive: post.is_active,
       isFavorite: post.is_favorite,
+      isNote: post.post_type === 'note',
     };
   });
 };
@@ -666,7 +670,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
                 // Notes are text-first and get a typographic card; everything
                 // else leads with its image.
-                const Tile = item.category === 'notes'
+                const Tile = item.isNote
                   ? <NoteTile item={item} />
                   : <ImageTile item={item} index={index} />;
 
@@ -740,6 +744,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
             category={selectedImage.category}
             album={selectedImage.album}
             isText={selectedImage.isText}
+            postType={selectedImage.rawPost?.post_type}
             price={selectedImage.price}
             galleryUrls={selectedImage.galleryUrls}
             isActive={selectedImage.isActive}

@@ -4,7 +4,7 @@ import { EnvelopeIcon, PhoneIcon } from '@heroicons/react/24/outline';
 const navigation = {
   main: [
     { name: 'Bio', href: '/bio' },
-    { name: 'Notes', href: '/notes' },
+    { name: 'Music', href: '/music' },
     { name: 'Art', href: '/artwork' },
     { name: 'Photography', href: '/photography' },
     { name: 'Projects', href: '/projects' },

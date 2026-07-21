@@ -30,11 +30,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 0.9,
         },
         {
-            url: `${BASE_URL}/notes`,
+            url: `${BASE_URL}/music`,
             lastModified: new Date(),
-            // Notes republish whenever they are edited in the w_notes app, so
-            // this feed turns over faster than the other categories.
-            changeFrequency: 'daily' as const,
+            changeFrequency: 'weekly' as const,
             priority: 0.9,
         },
         {
