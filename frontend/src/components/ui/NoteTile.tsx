@@ -6,7 +6,7 @@
  * and the date it was last edited (which is also its sort key in the feed).
  */
 
-import { noteExcerpt } from '@/lib/html-text';
+import { notePreview } from '@/lib/html-text';
 
 interface NoteTileProps {
   item: {
@@ -35,7 +35,12 @@ function formatDate(iso?: string): string | null {
 export default function NoteTile({ item }: NoteTileProps) {
   // Prefer an explicit description if one was ever set; otherwise derive the
   // preview from the body, the same way the notes app renders its own previews.
-  const excerpt = item.description?.trim() || noteExcerpt(item.contentUrl || '');
+  const description = item.description?.trim();
+  const preview = notePreview(item.contentUrl || '');
+  const excerpt = description || preview.text;
+  // Only the derived preview knows whether it clipped the body; an explicit
+  // description is authored copy and stands on its own.
+  const continues = !description && preview.truncated;
   const date = formatDate(item.date);
 
   return (
@@ -47,16 +52,32 @@ export default function NoteTile({ item }: NoteTileProps) {
           </h3>
 
           {excerpt && (
-            <p className="mt-3 flex-1 text-sm leading-relaxed text-white/60 line-clamp-[8]">
-              {excerpt}
-            </p>
+            <div className="relative mt-3 flex-1 overflow-hidden">
+              <p className="whitespace-pre-line text-sm leading-relaxed text-white/60 line-clamp-[8]">
+                {excerpt}
+              </p>
+              {/* Fade the last line into the card so a clipped note reads as
+                  clipped. The CSS clamp can cut mid-line independently of the
+                  string-level truncation, so the cue is visual, not just an
+                  ellipsis in the text. */}
+              {continues && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black to-transparent" />
+              )}
+            </div>
           )}
 
-          {date && (
-            <span className="mt-4 shrink-0 text-xs uppercase tracking-wide text-white/40">
-              {date}
-            </span>
-          )}
+          <div className="mt-4 flex shrink-0 items-center justify-between gap-2">
+            {date ? (
+              <span className="text-xs uppercase tracking-wide text-white/40">{date}</span>
+            ) : (
+              <span />
+            )}
+            {continues && (
+              <span className="text-xs font-medium text-white/50 transition-colors group-hover:text-white/80">
+                Read more
+              </span>
+            )}
+          </div>
         </div>
 
         {item.isFavorite && (

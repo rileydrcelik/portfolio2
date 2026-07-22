@@ -212,7 +212,10 @@ def _w_notes_client() -> httpx.AsyncClient:
 class EmbedRequest(BaseModel):
     note_id: str = Field(..., description="w_notes note id to embed")
     category: str = Field(..., description="Subject the note is filed under")
-    album: str = Field(..., max_length=100)
+    # Optional: embedding should ask for nothing but which note it is. Left
+    # unset, the album falls back to the note's own folder name, then to
+    # "notes" for a note that lives at the root.
+    album: str | None = Field(default=None, max_length=100)
     is_major: bool = False
     tags: list[str] = Field(default_factory=list)
 
@@ -255,7 +258,10 @@ async def embed_note(
             raise HTTPException(status_code=502, detail="Could not reach the notes service") from exc
 
     note = response.json()
+    # Everything the post displays comes from the note itself — the admin picks
+    # the subject and the note, nothing else.
     title = (note.get("title") or "").strip() or "Untitled note"
+    album = payload.album or (note.get("folder") or "").strip() or "notes"
     body = sanitize_body(note.get("body_html") or "")
     when = _to_datetime(note.get("updated_at") or 0)
 
@@ -263,7 +269,7 @@ async def embed_note(
         source=SOURCE,
         source_id=payload.note_id,
         category=payload.category,
-        album=payload.album,
+        album=album,
         title=title,
         slug=generate_unique_slug(title, db),
         # Text posts store content inline rather than as an S3 URL; the feed

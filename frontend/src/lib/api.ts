@@ -52,6 +52,33 @@ const buildUrl = (host: string): string => {
 
 const API_URL = buildUrl(resolveHost());
 const POSTS_ENDPOINT = `${API_URL}/api/posts/`;
+
+/**
+ * Turn a FastAPI error body into something a person can read.
+ *
+ * `detail` is a plain string for errors we raise ourselves, but an *array* of
+ * `{loc, msg}` objects for request-validation failures (422). Interpolating
+ * that array straight into a message renders "[object Object]", which is how a
+ * perfectly diagnosable "note_id: Field required" reached the UI as an opaque
+ * failure. Arrays are flattened to "field: message" instead.
+ */
+function apiErrorMessage(body: unknown, fallback: string): string {
+  const detail = (body as { detail?: unknown } | null)?.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((entry) => {
+        const e = entry as { loc?: unknown[]; msg?: string };
+        // Drop the leading "body"/"query" segment; the field name is the useful part.
+        const field = Array.isArray(e.loc) ? e.loc.slice(1).join('.') || String(e.loc[0] ?? '') : '';
+        return field ? `${field}: ${e.msg ?? 'invalid'}` : (e.msg ?? '');
+      })
+      .filter(Boolean);
+    if (parts.length) return parts.join('; ');
+  }
+  return fallback;
+}
+
 const ALBUMS_ENDPOINT = `${API_URL}/api/posts/albums/`;
 const UPLOAD_IMAGE_ENDPOINT = `${API_URL}/api/upload/image`;
 const CREATE_ALBUM_ENDPOINT = `${API_URL}/api/albums/create-by-category`;
@@ -202,7 +229,7 @@ export async function updatePost(id: string, post: Partial<PostCreate>, authToke
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Failed to update post');
+    throw new Error(apiErrorMessage(error, 'Failed to update post'));
   }
   return response.json();
 }
@@ -378,7 +405,7 @@ export async function createAlbum(album: CreateAlbumRequest, authToken?: string)
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || 'Failed to create album');
+    throw new Error(apiErrorMessage(error, 'Failed to create album'));
   }
   return response.json();
 }
@@ -407,14 +434,16 @@ export async function getAvailableNotes(authToken?: string): Promise<AvailableNo
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || 'Could not load notes');
+    throw new Error(apiErrorMessage(error, 'Could not load notes'));
   }
   return response.json();
 }
 
 /** Place a note as a post inside the chosen subject. */
 export async function embedNote(
-  payload: { note_id: string; category: string; album: string; is_major?: boolean; tags?: string[] },
+  // album is optional: the server falls back to the note's own folder name, so
+  // embedding asks for nothing but the subject and which note.
+  payload: { note_id: string; category: string; album?: string; is_major?: boolean; tags?: string[] },
   authToken?: string,
 ): Promise<Post> {
   const response = await fetch(`${API_URL}/api/notes/embed`, {
@@ -427,7 +456,7 @@ export async function embedNote(
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || 'Failed to embed note');
+    throw new Error(apiErrorMessage(error, 'Failed to embed note'));
   }
   return response.json();
 }

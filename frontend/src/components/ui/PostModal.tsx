@@ -593,9 +593,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
           setIsSubmitting(false);
           return;
         }
-        const album = selectedAlbum || albumNames[0] || 'notes';
+        // Album, title and body all come from the note itself; the admin only
+        // chose a subject and which note to place.
         const created = await embedNote(
-          { note_id: selectedNoteId, category: selectedSubject, album, is_major: isMajor, tags },
+          { note_id: selectedNoteId, category: selectedSubject },
           authToken,
         );
         console.log('[PostModal] Note embedded:', created.slug);
@@ -1075,6 +1076,10 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                     )}
                   </div>
 
+                  {/* Everything below is for uploaded content. Embedding takes its title,
+                      body and album from the note itself, so the note picker is the only
+                      input and these would be misleading. */}
+                  {!embedMode && (<>
                   {/* Album Selection */}
 
                   {/* Album Selection */}
@@ -1577,6 +1582,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                     />
                   </div>
 
+                  </>)}
                   {/* Submit Button */}
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
@@ -1594,7 +1600,7 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                         // — no title, no file, none of the upload validation,
                         // since the body and title come from the note itself.
                         embedMode
-                          ? !selectedSubject || !selectedAlbum || !selectedNoteId || isSubmitting
+                          ? !selectedSubject || !selectedNoteId || isSubmitting
                           :
                         !selectedSubject ||
                         !selectedAlbum ||

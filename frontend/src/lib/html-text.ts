@@ -18,7 +18,11 @@ export function htmlToPlainText(html: string): string {
     )
     // Remaining (bulleted/ordered) list items get a bullet. Each starts a line.
     .replace(/<li\b[^>]*>/gi, '\n• ')
-    .replace(/<\/(p|div|h[1-6]|blockquote|pre)>/gi, '\n')
+    // Closing `li` and the list wrappers break lines too, not just the opening
+    // tags handled above. Without this, whatever follows a list runs into its
+    // final item — "bagel" + "also apples" renders as "bagelalso apples".
+    // Empty lines are filtered further down, so the extra break costs nothing.
+    .replace(/<\/(p|div|h[1-6]|blockquote|pre|li|ul|ol)>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
@@ -45,4 +49,40 @@ export function noteExcerpt(html: string, maxLength = 220): string {
   const clipped = text.slice(0, maxLength);
   const lastSpace = clipped.lastIndexOf(' ');
   return `${clipped.slice(0, lastSpace > 0 ? lastSpace : maxLength).trimEnd()}…`;
+}
+
+/**
+ * A multi-line preview for a feed card: keeps the body's line structure and its
+ * bullet/checkbox markers, unlike `noteExcerpt` which flattens everything to one
+ * run-on line. A bulleted note read as "eggs milk bread" instead of a list,
+ * which is worse than useless — it misrepresents what the note is.
+ *
+ * Render with `white-space: pre-line` so the newlines survive to the page.
+ *
+ * Reports whether it clipped anything, because a card has to say so — a
+ * truncated note that looks complete misrepresents itself, and with a list or a
+ * checklist the visible part can read as the whole thing.
+ */
+export function notePreview(
+  html: string,
+  maxLines = 8,
+  maxLength = 320,
+): { text: string; truncated: boolean } {
+  const text = htmlToPlainText(html);
+  if (!text) return { text: '', truncated: false };
+
+  const allLines = text.split('\n');
+  const lines = allLines.slice(0, maxLines);
+  let out = lines.join('\n');
+  // Either limit can clip: too many lines, or too many characters.
+  let truncated = allLines.length > maxLines;
+
+  if (out.length > maxLength) {
+    const clipped = out.slice(0, maxLength);
+    const cut = Math.max(clipped.lastIndexOf(' '), clipped.lastIndexOf('\n'));
+    out = clipped.slice(0, cut > 0 ? cut : maxLength).trimEnd();
+    truncated = true;
+  }
+
+  return { text: truncated ? `${out}…` : out, truncated };
 }
