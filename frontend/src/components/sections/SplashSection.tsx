@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDownIcon, HomeIcon, UserIcon, PaintBrushIcon, CameraIcon, MusicalNoteIcon, CodeBracketIcon, ShoppingBagIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Tooltip } from '@chakra-ui/react';
 import GlassTooltipLabel from '@/components/ui/GlassTooltipLabel';
 import { getPosts, Post } from '@/lib/api';
+import { HERO_TONE_STYLES, useHeroTone } from '@/lib/useHeroTone';
 
 export default function SplashSection() {
   const [scrollY, setScrollY] = useState(0);
@@ -16,6 +17,8 @@ export default function SplashSection() {
   const [featuredPost, setFeaturedPost] = useState<Post | null>(null);
   const [isLoadingPost, setIsLoadingPost] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const splashRef = useRef<HTMLDivElement | null>(null);
+  const titleBlockRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setWindowHeight(window.innerHeight);
@@ -121,6 +124,12 @@ export default function SplashSection() {
   useEffect(() => {
     setImageLoaded(false);
   }, [featuredImageUrl]);
+
+  // The featured image is whatever was published last, so the title cannot
+  // assume a dark backdrop. Sample what is actually behind it and flip the
+  // font colour when a bright image would swallow white text.
+  const tone = useHeroTone(featuredImageUrl, splashRef, titleBlockRef);
+  const toneStyles = HERO_TONE_STYLES[tone];
 
   // Smooth fade out starting from 50% scroll through the splash
   const fadeStart = windowHeight * 0.5; // Start fading at 50% through viewport
@@ -340,7 +349,7 @@ export default function SplashSection() {
         </motion.div>
       </div>
 
-      <div className="relative h-screen w-full overflow-hidden pointer-events-none">
+      <div ref={splashRef} className="relative h-screen w-full overflow-hidden pointer-events-none">
         {/* Background Image */}
         <div
           className="absolute inset-0 z-0 pointer-events-none"
@@ -400,6 +409,7 @@ export default function SplashSection() {
         {/* Content Overlay - Title positioned to break the sidebar */}
         <div className="absolute left-0 top-1/2 transform -translate-y-1/2 z-50 px-4 pointer-events-auto">
           <div
+            ref={titleBlockRef}
             className="max-w-4xl"
             style={{
               opacity: titleOpacity,
@@ -409,19 +419,19 @@ export default function SplashSection() {
           >
             {postLink ? (
               <Link href={postLink} className="block group">
-                <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-white mb-1 select-none leading-tight transition-all duration-300 group-hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.6)] group-hover:text-white">
+                <h1 className={`text-5xl sm:text-6xl md:text-8xl font-serif mb-1 select-none leading-tight transition-all duration-300 ${toneStyles.title} ${toneStyles.titleHover}`}>
                   {featuredPost?.title || 'PICNIC'}
                 </h1>
-                <p className="text-xl md:text-2xl text-white/50 font-serif select-none transition-all duration-300 group-hover:text-white/80 group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+                <p className={`text-xl md:text-2xl font-serif select-none transition-all duration-300 ${toneStyles.description} ${toneStyles.descriptionHover}`}>
                   {featuredPost?.description || 'short description of the project...'}
                 </p>
               </Link>
             ) : (
               <>
-                <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif text-white mb-1 select-none leading-tight">
+                <h1 className={`text-5xl sm:text-6xl md:text-8xl font-serif mb-1 select-none leading-tight transition-all duration-300 ${toneStyles.title}`}>
                   {featuredPost?.title || 'PICNIC'}
                 </h1>
-                <p className="text-xl md:text-2xl text-white/50 font-serif select-none">
+                <p className={`text-xl md:text-2xl font-serif select-none transition-all duration-300 ${toneStyles.description}`}>
                   {featuredPost?.description || 'short description of the project...'}
                 </p>
               </>
