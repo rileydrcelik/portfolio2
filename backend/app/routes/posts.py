@@ -1,7 +1,7 @@
 import logging
 import re
 from uuid import uuid4
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_, and_, text
 from typing import List, Optional
@@ -11,6 +11,7 @@ from app.models.post import Post
 from app.schemas.post import PostCreate, PostUpdate, PostResponse
 from app.lib.s3 import delete_file_from_s3
 from app.lib.firebase_auth import verify_firebase_token
+from app.lib import aiko_sync
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +120,12 @@ async def get_post_by_slug(slug: str, db: Session = Depends(get_db)):
     return post
 
 @router.post("/", response_model=PostResponse)
-async def create_post(post: PostCreate, db: Session = Depends(get_db), current_user=Depends(verify_firebase_token)):
+async def create_post(
+    post: PostCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user=Depends(verify_firebase_token),
+):
     """Create a new post"""
     data = post.dict(exclude_unset=True)
     title = data.get('title')
@@ -148,12 +154,20 @@ async def create_post(post: PostCreate, db: Session = Depends(get_db), current_u
     db.add(db_post)
     db.commit()
     db.refresh(db_post)
+
+    # Mirror art/photo to Aiko. Backgrounded so a slow or unreachable Aiko never
+    # delays — or fails — publishing here.
+    snapshot = aiko_sync.snapshot(db_post)
+    if aiko_sync.should_mirror(snapshot):
+        background_tasks.add_task(aiko_sync.push_post, snapshot)
+
     return db_post
 
 @router.put("/{post_id}", response_model=PostResponse)
 async def update_post(
     post_id: str,
     post_update: PostUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user=Depends(verify_firebase_token)
 ):
@@ -161,7 +175,12 @@ async def update_post(
     db_post = db.query(Post).filter(Post.id == post_id).first()
     if not db_post:
         raise HTTPException(status_code=404, detail="Post not found")
-    
+
+    # Captured before the update is applied: an edit that unpublishes a post or
+    # moves it out of art/photo has to take the Aiko pin down, and afterwards
+    # there is no way to tell that from a post that was never mirrored.
+    was_mirrored = aiko_sync.should_mirror(aiko_sync.snapshot(db_post))
+
     update_payload = post_update.dict(exclude_unset=True)
 
     for key, value in update_payload.items():
@@ -181,20 +200,32 @@ async def update_post(
  
     db.commit()
     db.refresh(db_post)
+
+    background_tasks.add_task(aiko_sync.sync_post, aiko_sync.snapshot(db_post), was_mirrored)
+
     return db_post
 
 @router.delete("/{post_id}")
-async def delete_post(post_id: str, db: Session = Depends(get_db), current_user=Depends(verify_firebase_token)):
+async def delete_post(
+    post_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user=Depends(verify_firebase_token),
+):
     """Delete a post"""
     db_post = db.query(Post).filter(Post.id == post_id).first()
     if not db_post:
         raise HTTPException(status_code=404, detail="Post not found")
-    
+
     content_url = db_post.content_url
     thumbnail_url = db_post.thumbnail_url
+    was_mirrored = aiko_sync.should_mirror(aiko_sync.snapshot(db_post))
 
     db.delete(db_post)
     db.commit()
+
+    if was_mirrored:
+        background_tasks.add_task(aiko_sync.delete_post, post_id)
 
     # Delete associated assets from S3 (best-effort)
     delete_file_from_s3(content_url)
