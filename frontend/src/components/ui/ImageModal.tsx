@@ -16,7 +16,6 @@ interface ImageModalProps {
   image?: string | null;
   title: string;
   description: string;
-  date?: string;
   tags?: string[];
   postId?: string;
   onDelete?: (postId: string) => void;
@@ -45,7 +44,6 @@ export default function ImageModal({
   image: rawImage = '',
   title,
   description,
-  date,
   tags,
   postId,
   onDelete,
@@ -127,6 +125,11 @@ export default function ImageModal({
   const isNote = postType === 'note';
   const isBio = category === 'bio' || isText;
   const isShop = category === 'apparel';
+
+  // The details column only earns its half of the modal when it holds
+  // something. A photo or art post with no description would otherwise open
+  // with a blank panel sitting next to the image.
+  const hasDetailsPanel = Boolean(description?.trim()) || (tags?.length ?? 0) > 0 || isShop;
 
   const isImageUrl = (value?: string | null) => {
     if (!value) return false;
@@ -300,7 +303,7 @@ export default function ImageModal({
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl pointer-events-auto">
+            <div className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl pointer-events-auto ${hasDetailsPanel ? 'max-w-6xl' : 'max-w-4xl'}`}>
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-white/20">
                 <h2 className="text-2xl font-bold text-white">{title}</h2>
@@ -419,38 +422,22 @@ export default function ImageModal({
                         </div>
                       </div>
                     )}
-
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
-                      <div className="space-y-2 text-white/80">
-                        {date && (
-                          <p>
-                            <span className="font-medium">Created:</span>{' '}
-                            {new Date(date).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </p>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col lg:flex-row max-h-[calc(90vh-80px)]">
-                  <div className="lg:w-1/2 p-6 space-y-4">
+                <div className={`flex flex-col max-h-[calc(90vh-80px)] ${hasDetailsPanel ? 'lg:flex-row' : ''} ${displayedImage ? 'lg:h-[calc(90vh-80px)]' : ''}`}>
+                  <div className={`p-6 space-y-4 flex flex-col min-h-0 ${hasDetailsPanel ? 'lg:w-1/2' : 'w-full'}`}>
                     {!(isProject || isBio) && displayedImage && (
-                      <div className="relative cursor-pointer" onClick={handleImageClick}>
+                      <div className="relative cursor-pointer flex-1 min-h-0 flex items-center justify-center" onClick={handleImageClick}>
                         <img
                           src={displayedImage}
                           alt={title}
-                          className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102"
+                          className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102 lg:w-auto lg:h-full lg:max-w-full lg:max-h-full"
                         />
                       </div>
                     )}
                     {galleryImages.length > 1 && (
-                      <div className="flex gap-2 overflow-x-auto pt-1 pb-1">
+                      <div className="flex gap-2 overflow-x-auto pt-1 pb-1 flex-shrink-0">
                         {galleryImages.map((url, index) => (
                           <button
                             key={`${url}-${index}`}
@@ -476,67 +463,44 @@ export default function ImageModal({
                     )}
                   </div>
 
-                  <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20 overflow-y-auto">
-                    <div className="space-y-6">
-                      <div>
+                  {hasDetailsPanel && (
+                    <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20 overflow-y-auto">
+                      <div className="space-y-6">
+                        {description?.trim() && (
+                          <p className="text-white/80 leading-relaxed whitespace-pre-wrap italic">{description}</p>
+                        )}
 
-                        <p className="text-white/80 leading-relaxed whitespace-pre-wrap italic">{description}</p>
+                        {isShop && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold border border-white/20 shadow-md shadow-black/30 transition-all duration-200 w-full md:w-auto backdrop-blur-sm hover:border-white/50 hover:shadow-xl hover:bg-white/20"
+                            aria-label="Buy item (coming soon)"
+                          >
+                            Buy
+                            {formattedPrice && (
+                              <span className="text-sm font-medium text-white/80">{formattedPrice}</span>
+                            )}
+                          </button>
+                        )}
+
+                        {tags && tags.length > 0 && (
+                          <div>
+                            <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
+                            <div className="flex flex-wrap gap-2">
+                              {tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-
-                      {isShop && (
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold border border-white/20 shadow-md shadow-black/30 transition-all duration-200 w-full md:w-auto backdrop-blur-sm hover:border-white/50 hover:shadow-xl hover:bg-white/20"
-                          aria-label="Buy item (coming soon)"
-                        >
-                          Buy
-                          {formattedPrice && (
-                            <span className="text-sm font-medium text-white/80">{formattedPrice}</span>
-                          )}
-                        </button>
-                      )}
-
-                      {tags && tags.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-flex items-center px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {!isShop && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-white mb-3">Technical Details</h3>
-                          <div className="space-y-2 text-white/80">
-                            {album && (
-                              <p>
-                                <span className="font-medium">Album:</span>{' '}
-                                {album}
-                              </p>
-                            )}
-                            {date && (
-                              <p>
-                                <span className="font-medium">Created:</span>{' '}
-                                {new Date(date).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 

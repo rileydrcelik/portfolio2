@@ -64,7 +64,6 @@ export default function PostModalClient({ post: initialPost, fallbackHref }: Pos
         image={imageCandidate}
         title={post.title}
         description={post.description}
-        date={post.date}
         tags={post.tags}
         contentUrl={post.content_url}
         isAudio={isAudio}

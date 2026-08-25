@@ -607,7 +607,15 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     try {
       await deletePost(postId, authToken);
       console.log('[Feed] Post deleted successfully');
-      window.location.reload();
+      // Opening the modal pushed the post's own detail URL into history, so a
+      // reload here re-requests a post that no longer exists and lands on the
+      // error page. Drop the item locally and restore the URL we came from.
+      setFeedItems(prev => prev.filter(item => item.postId !== postId));
+      setAllFeedItems(prev => prev.filter(item => item.postId !== postId));
+      if (typeof window !== 'undefined' && previousUrlRef.current) {
+        window.history.replaceState(null, '', previousUrlRef.current);
+        previousUrlRef.current = null;
+      }
     } catch (err) {
       console.error('[Feed] Error deleting post:', err);
       throw err; // Re-throw so ImageModal can handle it
@@ -735,7 +743,6 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
             image={selectedImage.image}
             title={selectedImage.title}
             description={selectedImage.description}
-            date={selectedImage.date}
             tags={selectedImage.tags}
             postId={selectedImage.postId}
             contentUrl={selectedImage.contentUrl}
