@@ -40,11 +40,32 @@ export default function PostModalClient({ post: initialPost, fallbackHref }: Pos
   };
 
   const handleExitComplete = () => {
-    // Check if there is history (length > 1 usually implies we can go back)
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
+    if (typeof window === 'undefined') return;
+
+    // window.history.length is not a usable signal for "can we go back": it
+    // counts the tab's earlier entries, including other origins, so a pasted
+    // or shared link usually reports > 1. router.back() then either leaves the
+    // site or does nothing at all, stranding the viewer on this page's bare
+    // black background with the modal already gone.
+    //
+    // Compare the URL the document was loaded at instead. This page is only
+    // ever entered by a client-side navigation (the splash link) or by a fresh
+    // load straight onto the post. If the document loaded at this very post
+    // there is nothing of ours behind it, so the album page is where exiting
+    // belongs, and replace() keeps the dead post URL out of history.
+    const [navEntry] = performance.getEntriesByType(
+      'navigation'
+    ) as PerformanceNavigationTiming[];
+
+    const enteredDirectly =
+      !navEntry ||
+      new URL(navEntry.name, window.location.origin).pathname ===
+        window.location.pathname;
+
+    if (enteredDirectly) {
+      router.replace(fallbackHref);
     } else {
-      router.push(fallbackHref);
+      router.back();
     }
   };
 
