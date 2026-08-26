@@ -44,7 +44,6 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 async def get_posts(
     category: Optional[str] = None,
     album: Optional[str] = None,
-    tag: Optional[str] = None,
     is_major: Optional[bool] = None,
     is_favorite: Optional[bool] = None,
     limit: int = 100,
@@ -61,8 +60,6 @@ async def get_posts(
         query = query.filter(
             or_(Post.album == album, Post.cross_post_albums.any(album))
         )
-    if tag:
-        query = query.filter(Post.tags.contains([tag]))
     if is_major is not None:
         query = query.filter(Post.is_major == is_major)
     if is_favorite is not None:
@@ -138,8 +135,6 @@ async def create_post(
     category = data.get('category')
     is_major = data.get('is_major', False)
 
-    if 'tags' not in data or data['tags'] is None:
-        data['tags'] = []
     if 'gallery_urls' not in data or data['gallery_urls'] is None:
         data['gallery_urls'] = []
 

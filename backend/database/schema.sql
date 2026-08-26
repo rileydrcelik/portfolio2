@@ -116,7 +116,6 @@ CREATE TABLE posts (
     thumbnail_url TEXT NOT NULL,
     splash_image_url TEXT,
     date TIMESTAMP NOT NULL,
-    tags TEXT[] NOT NULL DEFAULT '{}'::text[],
     price NUMERIC(10,2),
     gallery_urls TEXT[] NOT NULL DEFAULT '{}'::text[],
     is_major BOOLEAN NOT NULL DEFAULT FALSE,

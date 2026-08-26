@@ -70,7 +70,6 @@ def snapshot(post) -> SimpleNamespace:
         post_type=post.post_type,
         content_url=post.content_url,
         thumbnail_url=post.thumbnail_url,
-        tags=list(post.tags or []),
         slug=post.slug,
     )
 
@@ -114,13 +113,8 @@ def _public_url(post) -> Optional[str]:
 
 
 def _description(post) -> str:
-    """Aiko shows a single description field; tags carry meaning here, so they
-    ride along as a trailing hashtag line rather than being dropped."""
-    parts = [(post.description or "").strip()]
-    tags = [t.strip() for t in (post.tags or []) if t and t.strip()]
-    if tags:
-        parts.append(" ".join(f"#{t.replace(' ', '')}" for t in tags))
-    return "\n\n".join(p for p in parts if p)
+    """Aiko shows a single description field."""
+    return (post.description or "").strip()
 
 
 async def push_post(post) -> dict:

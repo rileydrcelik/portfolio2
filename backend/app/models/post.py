@@ -16,7 +16,6 @@ class Post(Base):
     thumbnail_url = Column(Text, nullable=False)
     splash_image_url = Column(Text, nullable=True)
     date = Column(DateTime, nullable=False)
-    tags = Column(ARRAY(Text), nullable=False, default=[])
     price = Column(Numeric(10, 2), nullable=True)
     gallery_urls = Column(ARRAY(Text), nullable=False, default=list)
     is_major = Column(Boolean, nullable=False, default=False)

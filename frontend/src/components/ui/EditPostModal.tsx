@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus } from 'lucide-react';
+import { X } from 'lucide-react';
 import { type PostCreate, updatePost, getAlbumsByCategory, uploadImage } from '@/lib/api';
 import MarkdownEditor from './MarkdownEditor';
 import { useAuth } from '@/providers/AuthProvider';
@@ -16,7 +16,6 @@ interface EditPostModalProps {
         description: string;
         category: string;
         album: string;
-        tags: string[];
         price?: number | null;
         isActive?: boolean;
         isMajor?: boolean;
@@ -43,7 +42,6 @@ export default function EditPostModal({
         description: post.description || '',
         category: post.category,
         album: post.album,
-        tags: post.tags,
         price: post.price,
         is_active: post.isActive,
         is_major: post.isMajor,
@@ -51,7 +49,6 @@ export default function EditPostModal({
         cross_post_albums: post.crossPostAlbums || [],
     });
 
-    const [tagInput, setTagInput] = useState('');
     const [albumOptions, setAlbumOptions] = useState<string[]>([]);
 const [articleContent, setArticleContent] = useState(post.contentUrl || '');
 
@@ -100,32 +97,6 @@ const [articleContent, setArticleContent] = useState(post.contentUrl || '');
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
-    };
-
-    const handleTagAdd = (e?: React.MouseEvent) => {
-        if (tagInput.trim()) {
-            if (!formData.tags?.includes(tagInput.trim())) {
-                setFormData(prev => ({
-                    ...prev,
-                    tags: [...(prev.tags || []), tagInput.trim()]
-                }));
-            }
-            setTagInput('');
-        }
-    };
-
-    const handleTagInputKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleTagAdd();
-        }
-    };
-
-    const handleTagRemove = (tagToRemove: string) => {
-        setFormData(prev => ({
-            ...prev,
-            tags: (prev.tags || []).filter(tag => tag !== tagToRemove)
-        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -314,43 +285,6 @@ const [articleContent, setArticleContent] = useState(post.contentUrl || '');
                                             />
                                         </div>
                                     )}
-
-                                    {/* Tags */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-white/90 mb-2">Tags</label>
-                                        <div className="space-y-2">
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={tagInput}
-                                                    onChange={(e) => setTagInput(e.target.value)}
-                                                    onKeyDown={handleTagInputKeyDown}
-                                                    placeholder="Enter a tag and press Enter"
-                                                    className="flex-1 p-3 border border-white/30 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 placeholder-white/50"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleTagAdd()}
-                                                    className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg transition-colors"
-                                                >
-                                                    <Plus className="w-5 h-5 text-white" />
-                                                </button>
-                                            </div>
-                                            {(formData.tags && formData.tags.length > 0) && (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {formData.tags.map(tag => (
-                                                        <span key={tag} className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white">
-                                                            {tag}
-                                                            <button type="button" onClick={() => handleTagRemove(tag)} className="hover:text-white/60 transition-colors">
-                                                                <X className="w-3 h-3" />
-                                                            </button>
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
 
                                     {/* Toggles */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

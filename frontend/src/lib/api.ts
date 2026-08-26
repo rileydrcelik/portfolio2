@@ -95,7 +95,6 @@ export interface Post {
   thumbnail_url: string;
   splash_image_url?: string | null;
   date: string;
-  tags: string[];
   is_major: boolean;
   price?: number | null;
   gallery_urls?: string[];
@@ -115,7 +114,6 @@ export interface PostCreate {
   thumbnail_url: string;
   splash_image_url?: string | null;
   date: string;
-  tags?: string[];
   is_major?: boolean;
   slug?: string | null;
   article_content?: string | null;
@@ -134,13 +132,11 @@ export async function getPosts(params?: {
   offset?: number;
   is_major?: boolean;
   is_favorite?: boolean;
-  tag?: string;
   sort_by?: string;
 }): Promise<Post[]> {
   const queryParams = new URLSearchParams();
   if (params?.category) queryParams.append('category', params.category);
   if (params?.album) queryParams.append('album', params.album);
-  if (params?.tag) queryParams.append('tag', params.tag);
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.offset) queryParams.append('offset', params.offset.toString());
   if (typeof params?.is_major === 'boolean') queryParams.append('is_major', params.is_major ? 'true' : 'false');
@@ -443,7 +439,7 @@ export async function getAvailableNotes(authToken?: string): Promise<AvailableNo
 export async function embedNote(
   // album is optional: the server falls back to the note's own folder name, so
   // embedding asks for nothing but the subject and which note.
-  payload: { note_id: string; category: string; album?: string; is_major?: boolean; tags?: string[] },
+  payload: { note_id: string; category: string; album?: string; is_major?: boolean },
   authToken?: string,
 ): Promise<Post> {
   const response = await fetch(`${API_URL}/api/notes/embed`, {

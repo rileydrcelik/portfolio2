@@ -85,7 +85,6 @@ interface FeedItem {
   album?: string;
   date?: string; // ISO date string from database
   postId?: string; // UUID from database for deletion
-  tags?: string[]; // Tags array
   contentUrl?: string;
   isAudio?: boolean;
   slug?: string;
@@ -106,7 +105,6 @@ interface FeedProps {
   activeAlbum?: string;
   category?: string; // Optional category to fetch from database
   useDatabase?: boolean; // Flag to use database instead of static images
-  activeTag?: string; // Active tag filter
   limit?: number; // Optional limit when fetching from database
 }
 
@@ -230,7 +228,6 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       album: post.album,
       date: post.date,
       postId: post.id,
-      tags: post.tags || [],
       contentUrl,
       isAudio,
       slug: post.slug,
@@ -434,7 +431,7 @@ const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 1
   return { positions, containerHeight };
 };
 
-export default function Feed({ directory, activeAlbum = 'all', category, useDatabase = false, activeTag = '', limit }: FeedProps) {
+export default function Feed({ directory, activeAlbum = 'all', category, useDatabase = false, limit }: FeedProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [selectedImage, setSelectedImage] = useState<FeedItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -460,7 +457,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   // Fetch posts from database (paginated)
   useEffect(() => {
     const loadFeedItems = async () => {
-      console.log('🚀 Loading feed items...', { useDatabase, category, directory, activeAlbum, activeTag });
+      console.log('🚀 Loading feed items...', { useDatabase, category, directory, activeAlbum });
 
       setIsLoading(true);
       setFeedItems([]); // Reset items on filter change
@@ -471,7 +468,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
         if (useDatabase) {
           // Fetch posts from database with filters
-          const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number; is_favorite?: boolean } = {
+          const params: { category?: string; limit?: number; album?: string; offset?: number; is_favorite?: boolean } = {
             category,
             limit: fetchLimit,
             offset: 0
@@ -484,7 +481,6 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
               params.album = activeAlbum;
             }
           }
-          if (activeTag) params.tag = activeTag;
 
           const posts = await getPosts(params);
           items = await convertPostsToFeedItems(posts);
@@ -509,7 +505,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     };
 
     loadFeedItems();
-  }, [directory, category, useDatabase, activeAlbum, activeTag, fetchLimit]);
+  }, [directory, category, useDatabase, activeAlbum, fetchLimit]);
 
   const handleLoadMore = useCallback(async () => {
     if (!useDatabase || isLoading || isFetchingRef.current) return;
@@ -517,7 +513,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     isFetchingRef.current = true;
     setIsFetchingMore(true);
     try {
-      const params: { category?: string; limit?: number; album?: string; tag?: string; offset?: number; is_favorite?: boolean } = {
+      const params: { category?: string; limit?: number; album?: string; offset?: number; is_favorite?: boolean } = {
         category,
         limit: fetchLimit,
         offset: offsetRef.current
@@ -530,7 +526,6 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
           params.album = activeAlbum;
         }
       }
-      if (activeTag) params.tag = activeTag;
 
       const posts = await getPosts(params);
       offsetRef.current += posts.length;
@@ -548,7 +543,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       isFetchingRef.current = false;
       setIsFetchingMore(false);
     }
-  }, [useDatabase, isLoading, category, fetchLimit, activeAlbum, activeTag]);
+  }, [useDatabase, isLoading, category, fetchLimit, activeAlbum]);
 
   const sentinelRef = useInfiniteScroll(
     handleLoadMore,
@@ -743,7 +738,6 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
             image={selectedImage.image}
             title={selectedImage.title}
             description={selectedImage.description}
-            tags={selectedImage.tags}
             postId={selectedImage.postId}
             contentUrl={selectedImage.contentUrl}
             isAudio={selectedImage.isAudio}

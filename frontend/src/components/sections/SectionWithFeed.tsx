@@ -24,17 +24,15 @@ interface SectionWithFeedProps {
 
 export default function SectionWithFeed({ title, directory, albums: initialAlbums = [], category, useDatabase = false, initialAlbum = 'all', categorySlug }: SectionWithFeedProps) {
   const [activeAlbum, setActiveAlbum] = useState(initialAlbum);
-  const [activeTag, setActiveTag] = useState('');
   const [albums, setAlbums] = useState<Album[]>(initialAlbums);
   const [totalCount, setTotalCount] = useState(0);
-  const [availableTags, setAvailableTags] = useState<{ name: string; count: number }[]>([]);
   const { token: authToken } = useAuth();
 
   useEffect(() => {
     setActiveAlbum(initialAlbum);
   }, [initialAlbum]);
 
-  // Fetch albums, post counts, and tags from database when using database
+  // Fetch albums and post counts from database when using database
   useEffect(() => {
     if (useDatabase && category) {
       const fetchData = async () => {
@@ -119,29 +117,11 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
 
           // Total count = unique posts in this category (not sum of album counts)
           setTotalCount(allPosts.length);
-
-          // Extract all unique tags with counts
-          const tagCounts = new Map<string, number>();
-          allPosts.forEach(post => {
-            if (post.tags && Array.isArray(post.tags)) {
-              post.tags.forEach(tag => {
-                const count = tagCounts.get(tag) || 0;
-                tagCounts.set(tag, count + 1);
-              });
-            }
-          });
-
-          const sortedTags = Array.from(tagCounts.entries())
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-          setAvailableTags(sortedTags);
         } catch (error) {
           console.error('[SectionWithFeed] Error fetching data:', error);
           // On error, show empty state
           setAlbums([]);
           setTotalCount(0);
-          setAvailableTags([]);
         }
       };
 
@@ -151,7 +131,6 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
       const total = initialAlbums.reduce((sum, album) => sum + album.count, 0);
       setAlbums(initialAlbums);
       setTotalCount(total);
-      setAvailableTags([]);
     }
   }, [useDatabase, category]);
 
@@ -173,9 +152,6 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
         onAlbumChange={setActiveAlbum}
         onAlbumsReorder={handleAlbumsReorder}
         canReorder={!!authToken}
-        tags={availableTags}
-        activeTag={activeTag}
-        onTagChange={setActiveTag}
         categorySlug={categorySlug ?? category}
       />
 
@@ -185,7 +161,6 @@ export default function SectionWithFeed({ title, directory, albums: initialAlbum
         activeAlbum={activeAlbum}
         category={category}
         useDatabase={useDatabase}
-        activeTag={activeTag}
       />
     </div>
   );

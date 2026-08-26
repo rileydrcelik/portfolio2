@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
-
-import { Filter } from 'lucide-react';
 import Link from 'next/link';
 
 interface Album {
@@ -21,9 +19,6 @@ interface SectionHeaderProps {
   onAlbumChange: (albumId: string) => void;
   onAlbumsReorder?: (albums: Album[]) => void;
   canReorder?: boolean;
-  tags?: { name: string; count: number }[];
-  activeTag?: string;
-  onTagChange?: (tag: string) => void;
   categorySlug?: string;
 }
 
@@ -35,13 +30,8 @@ export default function SectionHeader({
   onAlbumChange,
   onAlbumsReorder,
   canReorder = false,
-  tags = [],
-  activeTag = '',
-  onTagChange,
   categorySlug,
 }: SectionHeaderProps) {
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const isDragging = useRef(false);
   const router = useRouter();
 
@@ -70,7 +60,7 @@ export default function SectionHeader({
   return (
     <div className="pl-4 pr-4 py-8 bg-black">
       <div className="max-w-6xl">
-        {/* Main Title with Tag Filter */}
+        {/* Main Title */}
         <div className="flex items-center gap-4 mb-4">
           <h1 className="text-4xl text-white">
             <span className="font-bold">{title}</span>
@@ -91,76 +81,6 @@ export default function SectionHeader({
               </motion.span>
             </AnimatePresence>
           </h1>
-
-          {/* Tag Filter Dropdown */}
-          {tags.length > 0 && onTagChange && (
-            <div className="relative flex items-center">
-              <button
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="group cursor-pointer p-0 bg-transparent border-none outline-none"
-              >
-                <Filter className="w-5 h-5 text-white transition-opacity group-hover:opacity-60 translate-y-1" />
-              </button>
-
-              <AnimatePresence>
-                {isFilterOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 min-w-[160px] bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl overflow-hidden z-50"
-                    >
-                      <div className="p-2 border-b border-white/10">
-                        <input
-                          type="text"
-                          placeholder="Search tags..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full bg-transparent border border-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-white/30 placeholder:text-white/40"
-                        />
-                      </div>
-                      <div className="max-h-60 overflow-y-auto">
-                        <button
-                          onClick={() => {
-                            onTagChange('');
-                            setIsFilterOpen(false);
-                            setSearchQuery('');
-                          }}
-                          className={`w-full px-3 py-2 text-sm text-center transition-colors border-b border-white/10 ${activeTag === '' ? 'text-white bg-white/10 font-medium' : 'text-white/70 hover:bg-white/5'}`}
-                        >
-                          All tags
-                        </button>
-                        {tags
-                          .filter(tag => tag.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                          .map(tag => (
-                            <button
-                              key={tag.name}
-                              onClick={() => {
-                                onTagChange(tag.name);
-                                setIsFilterOpen(false);
-                                setSearchQuery('');
-                              }}
-                              className={`w-full px-3 py-2 text-sm text-center transition-colors ${activeTag === tag.name ? 'text-white bg-white/10 font-medium' : 'text-white/70 hover:bg-white/5'}`}
-                            >
-                              {tag.name} <span className="text-white/40 ml-1">({tag.count})</span>
-                            </button>
-                          ))}
-                        {tags.filter(tag => tag.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                          <div className="px-3 py-2 text-sm text-center text-white/40 italic">
-                            No tags found
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
         </div>
 
         {/* Album Filter Links */}

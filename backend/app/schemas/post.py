@@ -13,7 +13,6 @@ class PostBase(BaseModel):
     splash_image_url: Optional[str] = Field(default=None, description="Optional hero image for splash screen")
     post_type: Optional[str] = Field(default=None, description="Type of post: text, photo, audio, video, file")
     date: datetime = Field(..., description="Date for sorting/feed")
-    tags: List[str] = Field(default_factory=list, description="Tags for technology, techniques, emotions, etc.")
     is_major: bool = Field(default=False, description="Flag indicating whether the post is major (featured)")
     price: Optional[float] = Field(default=None, ge=0, description="Price for apparel posts")
     gallery_urls: List[str] = Field(default_factory=list, description="Additional gallery images for apparel posts")
@@ -33,7 +32,6 @@ class PostUpdate(BaseModel):
     thumbnail_url: Optional[str] = None
     splash_image_url: Optional[str] = None
     post_type: Optional[str] = None
-    tags: Optional[List[str]] = None
     is_major: Optional[bool] = None
     price: Optional[float] = None
     gallery_urls: Optional[List[str]] = None

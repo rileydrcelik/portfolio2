@@ -10,7 +10,6 @@ interface PostModalClientProps {
     title: string;
     description: string;
     date?: string;
-    tags?: string[];
     content_url: string;
     post_type?: string;
     thumbnail_url: string;
@@ -85,7 +84,6 @@ export default function PostModalClient({ post: initialPost, fallbackHref }: Pos
         image={imageCandidate}
         title={post.title}
         description={post.description}
-        tags={post.tags}
         contentUrl={post.content_url}
         isAudio={isAudio}
         slug={post.slug}

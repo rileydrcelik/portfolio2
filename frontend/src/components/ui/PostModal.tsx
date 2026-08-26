@@ -191,8 +191,6 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
   const [contentImagePreview, setContentImagePreview] = useState<string>('');
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
   const [date, setDate] = useState(getCurrentESTDateTime());
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState<string>('');
   const [isMajor, setIsMajor] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -344,28 +342,6 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       throw err instanceof Error ? err : new Error(message);
     } finally {
       setIsArticleImageUploading(false);
-    }
-  };
-
-  const handleAddTag = () => {
-    const trimmedTag = tagInput.trim();
-    if (trimmedTag && !tags.includes(trimmedTag)) {
-      setTags([...tags, trimmedTag]);
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTag();
-    } else if (e.key === 'Backspace' && tagInput === '' && tags.length > 0) {
-      // Remove last tag if backspace is pressed on empty input
-      handleRemoveTag(tags[tags.length - 1]);
     }
   };
 
@@ -826,7 +802,6 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
         thumbnail_url: finalThumbnailUrl,
         splash_image_url: splashImageUrl ?? null,
         date: new Date(date).toISOString(),
-        tags: tags.length > 0 ? tags : [],
         is_major: isMajor,
         is_active: isActive,
         post_type: selectedSubject === 'bio' ? postType : undefined,
@@ -857,8 +832,6 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
       setThumbnailFile(null);
       setGalleryFiles([]);
       setGalleryPreviews([]);
-      setTags([]);
-      setTagInput('');
       setIsMajor(false);
       setIsActive(false);
       setAudioPreviewName('');
@@ -1467,54 +1440,6 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
                       </p>
                     </div>
                   )}
-
-                  {/* Tags */}
-                  <div>
-                    <label className="block text-sm font-medium text-white/90 mb-2">
-                      Tags (technology, techniques, emotions, etc.)
-                    </label>
-                    <div className="space-y-2">
-                      {/* Tag Input */}
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={handleTagInputKeyDown}
-                          placeholder="Enter a tag and press Enter"
-                          className="flex-1 p-3 border border-white/30 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 placeholder-white/50"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddTag}
-                          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg transition-colors"
-                        >
-                          <Plus className="w-5 h-5 text-white" />
-                        </button>
-                      </div>
-
-                      {/* Tag Chips */}
-                      {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white"
-                            >
-                              {tag}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTag(tag)}
-                                className="hover:text-white/60 transition-colors"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
 
                   {/* Active Project Toggle */}
                   {selectedSubject === 'projects' && (

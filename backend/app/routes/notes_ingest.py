@@ -217,7 +217,6 @@ class EmbedRequest(BaseModel):
     # "notes" for a note that lives at the root.
     album: str | None = Field(default=None, max_length=100)
     is_major: bool = False
-    tags: list[str] = Field(default_factory=list)
 
 
 @router.get("/available")
@@ -280,7 +279,6 @@ async def embed_note(
         post_type="note",
         date=when,
         created_at=when,
-        tags=payload.tags,
         is_major=payload.is_major,
         is_active=True,
     )

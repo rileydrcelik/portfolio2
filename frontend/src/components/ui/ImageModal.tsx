@@ -16,7 +16,6 @@ interface ImageModalProps {
   image?: string | null;
   title: string;
   description: string;
-  tags?: string[];
   postId?: string;
   onDelete?: (postId: string) => void;
   contentUrl?: string;
@@ -44,7 +43,6 @@ export default function ImageModal({
   image: rawImage = '',
   title,
   description,
-  tags,
   postId,
   onDelete,
   contentUrl,
@@ -125,11 +123,27 @@ export default function ImageModal({
   const isNote = postType === 'note';
   const isBio = category === 'bio' || isText;
   const isShop = category === 'apparel';
+  const isArtOrPhoto = category === 'art' || category === 'photo';
+
+  const trimmedDescription = description?.trim() ?? '';
+  // Art and photo captions run to a line or two, so they sit beside the title
+  // rather than alone in a half-width column of their own.
+  const inlineDescription = isArtOrPhoto ? trimmedDescription : '';
+  const panelDescription = isArtOrPhoto ? '' : trimmedDescription;
 
   // The details column only earns its half of the modal when it holds
-  // something. A photo or art post with no description would otherwise open
-  // with a blank panel sitting next to the image.
-  const hasDetailsPanel = Boolean(description?.trim()) || (tags?.length ?? 0) > 0 || isShop;
+  // something. An image post whose caption moved up to the title would
+  // otherwise open with a blank panel sitting next to the image.
+  const hasDetailsPanel = Boolean(panelDescription) || isShop;
+
+  // The image is capped rather than stretched, so its box is exactly the
+  // rendered picture and the modal ends at the bottom edge of the photo
+  // instead of padding it out to the full viewport height. The reserve covers
+  // the header and the column's own padding, plus anything sharing the column.
+  const reservedHeightPx =
+    128 +
+    (galleryImages.length > 1 ? 88 : 0) +
+    (isAudio && contentUrl ? 70 : 0);
 
   const isImageUrl = (value?: string | null) => {
     if (!value) return false;
@@ -305,9 +319,16 @@ export default function ImageModal({
           >
             <div className={`bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl pointer-events-auto ${hasDetailsPanel ? 'max-w-6xl' : 'max-w-4xl'}`}>
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-white/20">
-                <h2 className="text-2xl font-bold text-white">{title}</h2>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-4 p-6 border-b border-white/20">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
+                  <h2 className="text-2xl font-bold text-white">{title}</h2>
+                  {inlineDescription && (
+                    <p className="text-base font-light italic text-white/50 leading-snug">
+                      {inlineDescription}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
                   {isActive && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full mr-2">
                       <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
@@ -406,38 +427,23 @@ export default function ImageModal({
                         )}
                       </div>
                     )}
-
-                    {tags && tags.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               ) : (
-                <div className={`flex flex-col max-h-[calc(90vh-80px)] ${hasDetailsPanel ? 'lg:flex-row' : ''} ${displayedImage ? 'lg:h-[calc(90vh-80px)]' : ''}`}>
-                  <div className={`p-6 space-y-4 flex flex-col min-h-0 ${hasDetailsPanel ? 'lg:w-1/2' : 'w-full'}`}>
+                <div className={`flex flex-col max-h-[calc(90vh-80px)] ${hasDetailsPanel ? 'lg:flex-row' : ''}`}>
+                  <div className={`p-6 space-y-4 ${hasDetailsPanel ? 'lg:w-1/2' : 'w-full'}`}>
                     {!(isProject || isBio) && displayedImage && (
-                      <div className="relative cursor-pointer flex-1 min-h-0 flex items-center justify-center" onClick={handleImageClick}>
+                      <div className="relative cursor-pointer flex items-center justify-center" onClick={handleImageClick}>
                         <img
                           src={displayedImage}
                           alt={title}
-                          className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102 lg:w-auto lg:h-full lg:max-w-full lg:max-h-full"
+                          style={{ '--image-max-h': `calc(90vh - ${reservedHeightPx}px)` } as React.CSSProperties}
+                          className="w-full h-auto max-h-[60vh] object-contain rounded-xl transition-transform duration-300 hover:scale-102 lg:max-h-[var(--image-max-h)]"
                         />
                       </div>
                     )}
                     {galleryImages.length > 1 && (
-                      <div className="flex gap-2 overflow-x-auto pt-1 pb-1 flex-shrink-0">
+                      <div className="flex gap-2 overflow-x-auto pt-1 pb-1">
                         {galleryImages.map((url, index) => (
                           <button
                             key={`${url}-${index}`}
@@ -466,8 +472,8 @@ export default function ImageModal({
                   {hasDetailsPanel && (
                     <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-white/20 overflow-y-auto">
                       <div className="space-y-6">
-                        {description?.trim() && (
-                          <p className="text-white/80 leading-relaxed whitespace-pre-wrap italic">{description}</p>
+                        {panelDescription && (
+                          <p className="text-white/80 leading-relaxed whitespace-pre-wrap italic">{panelDescription}</p>
                         )}
 
                         {isShop && (
@@ -481,22 +487,6 @@ export default function ImageModal({
                               <span className="text-sm font-medium text-white/80">{formattedPrice}</span>
                             )}
                           </button>
-                        )}
-
-                        {tags && tags.length > 0 && (
-                          <div>
-                            <h3 className="text-lg font-semibold text-white mb-3">Tags</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="inline-flex items-center px-3 py-1 bg-white/20 border border-white/30 rounded-full text-sm text-white"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
                         )}
                       </div>
                     </div>
@@ -582,7 +572,6 @@ export default function ImageModal({
                 description,
                 category: category || '',
                 album: album || '',
-                tags: tags || [],
                 price,
                 isActive,
                 isMajor: post?.splash_image_url === post?.content_url && category !== 'bio', // inferred roughly
