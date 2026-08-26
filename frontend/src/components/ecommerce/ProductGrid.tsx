@@ -57,7 +57,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
                     alt={product.name}
                     width={400}
                     height={225}
-                    className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    className="h-full w-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-300"
                   />
                   {product.isFeatured && (
                     <div className="absolute top-2 left-2">

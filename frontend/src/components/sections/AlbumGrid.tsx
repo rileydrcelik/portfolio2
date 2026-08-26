@@ -45,7 +45,7 @@ export default function AlbumGrid({ albums }: AlbumGridProps) {
                     alt={album.name}
                     width={400}
                     height={225}
-                    className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    className="h-full w-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-300"
                   />
                 </div>
                 <div className="mt-4">

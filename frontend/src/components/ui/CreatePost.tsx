@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import PostModal from './PostModal';
@@ -9,6 +10,23 @@ import { useAuth } from '@/providers/AuthProvider';
 export default function CreatePost() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user, loading, signInWithGoogle } = useAuth();
+  const pathname = usePathname();
+
+  // The button lives in the layout, so where it was pressed is only knowable
+  // from the URL. Art and photo posts are just the image you picked, so those
+  // two sections open the modal already pointed at themselves; every other
+  // subject still starts from a clean slate.
+  const [defaultSubject, defaultAlbum] = useMemo(() => {
+    const [category, album] = (pathname || '')
+      .split('/')
+      .filter(Boolean)
+      .map(decodeURIComponent);
+
+    if (category !== 'art' && category !== 'photo') return ['', ''];
+    // "favorites" is a view across albums, not an album anything can be filed
+    // under.
+    return [category, album && album !== 'favorites' ? album : ''];
+  }, [pathname]);
 
   if (loading) {
     return null;
@@ -48,6 +66,8 @@ export default function CreatePost() {
           <PostModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
+            defaultSubject={defaultSubject}
+            defaultAlbum={defaultAlbum}
           />
         )}
       </AnimatePresence>

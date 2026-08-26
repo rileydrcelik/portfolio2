@@ -36,7 +36,7 @@ export default function ImageTile({ item, index }: ImageTileProps) {
             src={item.image}
             alt={item.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
             loading={index === 0 ? "eager" : "lazy"}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />

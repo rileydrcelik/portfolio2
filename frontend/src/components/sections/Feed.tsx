@@ -691,8 +691,8 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, amount: 0, margin: "200px" }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
-                    whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } }}
-                    whileTap={{ scale: 0.98, transition: { duration: 0.15, ease: "easeOut" } }}
+                    whileHover={{ scale: 1.01, transition: { duration: 0.2, ease: "easeOut" } }}
+                    whileTap={{ scale: 0.99, transition: { duration: 0.15, ease: "easeOut" } }}
                   >
                     {detailHref ? (
                       <a

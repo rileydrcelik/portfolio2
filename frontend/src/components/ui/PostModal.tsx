@@ -23,6 +23,15 @@ import { useAuth } from '@/providers/AuthProvider';
 interface PostModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Subject to open on, when the upload button was pressed inside one. */
+  defaultSubject?: string;
+  /** Album to open on, when that subject was showing a single album. */
+  defaultAlbum?: string;
+}
+
+/** "IMG_2481.jpeg" -> "IMG_2481". */
+function titleFromFileName(name: string): string {
+  return name.replace(/\.[^.]+$/, '').trim();
 }
 
 const subjects = [
@@ -173,9 +182,11 @@ const readFileAsDataUrl = (file: File): Promise<string> => {
   });
 };
 
-export default function PostModal({ isOpen, onClose }: PostModalProps) {
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [selectedAlbum, setSelectedAlbum] = useState<string>('');
+export default function PostModal({ isOpen, onClose, defaultSubject = '', defaultAlbum = '' }: PostModalProps) {
+  // The modal is mounted fresh each time it opens, so where the upload button
+  // was pressed can simply seed the initial state.
+  const [selectedSubject, setSelectedSubject] = useState<string>(defaultSubject);
+  const [selectedAlbum, setSelectedAlbum] = useState<string>(defaultAlbum);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [postType, setPostType] = useState('text'); // 'text', 'photo', 'audio', 'video', 'file'
@@ -464,6 +475,11 @@ export default function PostModal({ isOpen, onClose }: PostModalProps) {
 
     setContentFile(file);
     setAudioPreviewName('');
+    // An art or photo post is the picture, so the file name is a better
+    // starting title than an empty box. Anything already typed wins.
+    if ((selectedSubject === 'art' || selectedSubject === 'photo') && !title.trim()) {
+      setTitle(titleFromFileName(file.name));
+    }
     if (!isFilePost) {
       setThumbnailFile(null);
     }
