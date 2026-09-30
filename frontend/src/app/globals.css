@@ -11,6 +11,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* The now-playing card's bars, while a song plays. */
+  --animate-now-playing: now-playing 0.9s ease-in-out infinite alternate;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,4 +50,13 @@ html {
   100% {
     background-position: 200% 0;
   }
+}
+
+@keyframes now-playing {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-now-playing { animation: none; transform: scaleY(0.6); }
 }

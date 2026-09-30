@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
-from app.routes import posts, upload, albums, notes_ingest
+from app.routes import posts, upload, albums, notes_ingest, presence
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +32,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # The now-playing card polls with If-None-Match; it can only do that if it
+    # can read the ETag off a cross-origin response.
+    expose_headers=["ETag"],
 )
 
 # Include routers
@@ -39,6 +42,7 @@ app.include_router(posts.router)
 app.include_router(upload.router)
 app.include_router(albums.router)
 app.include_router(notes_ingest.router)
+app.include_router(presence.router)
 
 @app.exception_handler(RequestValidationError)
 async def _log_validation_errors(request: Request, exc: RequestValidationError):

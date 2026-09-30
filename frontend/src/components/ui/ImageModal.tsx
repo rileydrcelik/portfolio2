@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm';
 import { type Post, updatePost } from '@/lib/api';
 import { useAuth } from '@/providers/AuthProvider';
 import EditPostModal from './EditPostModal';
+import NowPlayingTile from '@/components/ui/NowPlayingTile';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -121,6 +122,8 @@ export default function ImageModal({
   // An embedded note is flagged by post_type, not category — it can live in
   // any subject now, so the category tells us nothing about how to render it.
   const isNote = postType === 'note';
+  // The now-playing card is live and carries nothing of its own to show.
+  const isNowPlaying = postType === 'now_playing';
   const isBio = category === 'bio' || isText;
   const isShop = category === 'apparel';
   const isArtOrPhoto = category === 'art' || category === 'photo';
@@ -379,7 +382,11 @@ export default function ImageModal({
               </div>
 
               {/* Content */}
-              {isProject || isBio ? (
+              {isNowPlaying ? (
+                <div className="p-2 max-h-[calc(90vh-80px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <NowPlayingTile size="modal" />
+                </div>
+              ) : isProject || isBio ? (
                 <div className="p-6 max-h-[calc(90vh-80px)] overflow-y-auto border-t lg:border-t-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <div className="space-y-6 max-w-4xl mx-auto">
                     <div>

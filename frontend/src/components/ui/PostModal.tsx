@@ -16,7 +16,7 @@ import {
   PaperClipIcon,
   SpeakerWaveIcon,
 } from '@heroicons/react/24/outline';
-import { getAvailableNotes, embedNote, type AvailableNote, createPost, uploadImage, getAlbumsByCategory, createAlbum, type PostCreate } from '@/lib/api';
+import { getAvailableNotes, embedNote, embedNowPlaying, type AvailableNote, createPost, uploadImage, getAlbumsByCategory, createAlbum, type PostCreate } from '@/lib/api';
 import MarkdownEditor from './MarkdownEditor';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -190,9 +190,11 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [postType, setPostType] = useState('text'); // 'text', 'photo', 'audio', 'video', 'file'
-  // Embedding a w_notes note instead of uploading content. The note lives in
-  // whichever subject is selected — it is a post type, not a subject of its own.
-  const [embedMode, setEmbedMode] = useState(false);
+  // Embedding instead of uploading content: a w_notes note, or the live
+  // now-playing card from mariposa. Either lives in whichever subject is
+  // selected — it is a post type, not a subject of its own.
+  const [embedKind, setEmbedKind] = useState<'note' | 'now_playing' | null>(null);
+  const embedMode = embedKind !== null;
   const [availableNotes, setAvailableNotes] = useState<AvailableNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
@@ -552,7 +554,7 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
   // surfaced inline rather than thrown: the notes service being unreachable
   // shouldn't take down the whole create dialog.
   useEffect(() => {
-    if (!embedMode || availableNotes.length > 0 || !authToken) return;
+    if (embedKind !== 'note' || availableNotes.length > 0 || !authToken) return;
     let cancelled = false;
     setNotesLoading(true);
     setNotesError(null);
@@ -561,7 +563,7 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
       .catch((err) => { if (!cancelled) setNotesError(err?.message || 'Could not load notes'); })
       .finally(() => { if (!cancelled) setNotesLoading(false); });
     return () => { cancelled = true; };
-  }, [embedMode, availableNotes.length, authToken]);
+  }, [embedKind, availableNotes.length, authToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -572,6 +574,22 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
     if (!authToken) {
       setError('You must be signed in to create a post.');
       setIsSubmitting(false);
+      return;
+    }
+
+    // The now-playing card is a marker: all it needs is the subject. What it
+    // shows is read live from mariposa's presence when it is drawn.
+    if (embedKind === 'now_playing') {
+      try {
+        const created = await embedNowPlaying({ category: selectedSubject }, authToken);
+        console.log('[PostModal] Now playing placed:', created.slug);
+        onClose();
+        window.location.reload();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to place the now-playing card');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -963,19 +981,39 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
                       <div className="mt-6">
                         <button
                           type="button"
-                          onClick={() => { setEmbedMode(!embedMode); setSelectedNoteId(''); }}
-                          className={`w-full p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 ${embedMode
+                          onClick={() => { setEmbedKind(embedKind === 'note' ? null : 'note'); setSelectedNoteId(''); }}
+                          className={`w-full p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 ${embedKind === 'note'
                             ? 'border-white bg-white/20 text-white'
                             : 'border-white/20 hover:border-white/50 bg-white/5 text-white/60'
                             }`}
                         >
                           <DocumentTextIcon className="w-5 h-5" />
                           <span className="text-sm font-medium">
-                            {embedMode ? 'Embedding a note' : 'Embed a note'}
+                            {embedKind === 'note' ? 'Embedding a note' : 'Embed a note'}
                           </span>
                         </button>
 
-                        {embedMode && (
+                        {/* The live card of what is playing in mariposa. */}
+                        <button
+                          type="button"
+                          onClick={() => setEmbedKind(embedKind === 'now_playing' ? null : 'now_playing')}
+                          className={`mt-2 w-full p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 ${embedKind === 'now_playing'
+                            ? 'border-white bg-white/20 text-white'
+                            : 'border-white/20 hover:border-white/50 bg-white/5 text-white/60'
+                            }`}
+                        >
+                          <MusicalNoteIcon className="w-5 h-5" />
+                          <span className="text-sm font-medium">
+                            {embedKind === 'now_playing' ? 'Embedding now playing' : 'Embed now playing'}
+                          </span>
+                        </button>
+                        {embedKind === 'now_playing' && (
+                          <p className="mt-2 text-sm text-white/50">
+                            Shows what&rsquo;s playing in mariposa, or what played last, live. Once per subject.
+                          </p>
+                        )}
+
+                        {embedKind === 'note' && (
                           <div className="mt-3">
                             {notesLoading && (
                               <p className="text-sm text-white/50 py-3">Loading notes…</p>
@@ -1541,7 +1579,7 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
                         // — no title, no file, none of the upload validation,
                         // since the body and title come from the note itself.
                         embedMode
-                          ? !selectedSubject || !selectedNoteId || isSubmitting
+                          ? !selectedSubject || (embedKind === 'note' && !selectedNoteId) || isSubmitting
                           :
                         !selectedSubject ||
                         !selectedAlbum ||

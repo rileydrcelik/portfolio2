@@ -456,3 +456,66 @@ export async function embedNote(
   }
   return response.json();
 }
+
+// ---------------------------------------------------------------------------
+// Now playing (mariposa)
+// ---------------------------------------------------------------------------
+
+/** One song as the now-playing card draws it. */
+export interface PresenceSong {
+  title: string;
+  artists: string[];
+  album: string | null;
+  artwork_url: string | null;
+  /** Two CSS colours, drawn when there is no cover. */
+  gradient: [string, string] | null;
+}
+
+export interface NowPlayingState {
+  /** `idle` covers everything past: stopped, long paused, or never heard from. */
+  state: 'playing' | 'paused' | 'idle' | 'hidden';
+  track: (PresenceSong & { duration_s: number | null }) | null;
+  /** Where the song was at `position_at`; the card runs the clock on from there. */
+  position_s: number;
+  position_at: string | null;
+  /** When the song was last heard; null while playing. */
+  last_active_at: string | null;
+  server_now: string;
+  recent: (PresenceSong & { played_at: string })[];
+}
+
+/**
+ * The current now-playing state. Pass the last ETag to get `null` back when
+ * nothing changed (a 304), which is what most polls come back as.
+ */
+export async function getNowPlaying(
+  etag?: string | null,
+): Promise<{ data: NowPlayingState; etag: string | null } | null> {
+  const response = await fetch(`${API_URL}/api/presence/now-playing`, {
+    headers: etag ? { 'If-None-Match': etag } : {},
+    cache: 'no-store',
+  });
+  if (response.status === 304) return null;
+  if (!response.ok) throw new Error(`Now playing: ${response.status}`);
+  return { data: await response.json(), etag: response.headers.get('ETag') };
+}
+
+/** Place the now-playing card in a subject. Once per subject. */
+export async function embedNowPlaying(
+  payload: { category: string; album?: string; is_major?: boolean },
+  authToken?: string,
+): Promise<Post> {
+  const response = await fetch(`${API_URL}/api/presence/embed`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(apiErrorMessage(error, 'Failed to place the now-playing card'));
+  }
+  return response.json();
+}

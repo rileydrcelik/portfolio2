@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import ImageTile from '@/components/ui/ImageTile';
 import NoteTile from '@/components/ui/NoteTile';
+import NowPlayingTile from '@/components/ui/NowPlayingTile';
 import { noteExcerpt } from '@/lib/html-text';
 import { imageSets } from '@/data/imageData';
 import ImageModal from '@/components/ui/ImageModal';
@@ -98,6 +99,8 @@ interface FeedItem {
   isFavorite?: boolean;
   /** An embedded w_notes note: rendered as a typographic card, not an image. */
   isNote?: boolean;
+  /** The live now-playing card from mariposa: a marker post with nothing of its own. */
+  isNowPlaying?: boolean;
 }
 
 interface FeedProps {
@@ -189,7 +192,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
   // Image load that can only ever fall back to 1x1.
   const dimensions = await Promise.all(
     postData.map(d =>
-      d.post.post_type === 'note'
+      d.post.post_type === 'note' || d.post.post_type === 'now_playing'
         ? Promise.resolve({ width: 1, height: 1 })
         : getImageDimensions(d.imageUrl)
     )
@@ -197,7 +200,10 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
 
   return postData.map(({ post, imageUrl, looksLikeText }, index) => {
     const contentUrl = post.content_url;
-    const isAudio = post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(contentUrl);
+    const isNowPlaying = post.post_type === 'now_playing';
+    // Not an audio post, even in Music: it has no file, and the modal would
+    // otherwise draw an empty player for it.
+    const isAudio = !isNowPlaying && (post.category === 'music' || /\.(mp3|wav|ogg|m4a|flac)$/i.test(contentUrl));
     const aspectRatio = dimensions[index].width / dimensions[index].height;
 
     // Determine tile shape
@@ -206,6 +212,8 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       tileShape = 'shop';
     } else if (post.post_type === 'note') {
       tileShape = findNoteTileShape(post);
+    } else if (isNowPlaying) {
+      tileShape = post.is_major ? 'featured-square' : 'minor-square';
     } else if (post.is_major) {
       if (aspectRatio > 1.2) {
         tileShape = 'featured-landscape';
@@ -240,6 +248,7 @@ const convertPostsToFeedItems = async (posts: Post[]): Promise<FeedItem[]> => {
       isActive: post.is_active,
       isFavorite: post.is_favorite,
       isNote: post.post_type === 'note',
+      isNowPlaying,
     };
   });
 };
@@ -673,9 +682,11 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
                 // Notes are text-first and get a typographic card; everything
                 // else leads with its image.
-                const Tile = item.isNote
-                  ? <NoteTile item={item} />
-                  : <ImageTile item={item} index={index} />;
+                const Tile = item.isNowPlaying
+                  ? <NowPlayingTile />
+                  : item.isNote
+                    ? <NoteTile item={item} />
+                    : <ImageTile item={item} index={index} />;
 
                 return (
                   <motion.div
