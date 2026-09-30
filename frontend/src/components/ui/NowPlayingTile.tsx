@@ -5,16 +5,15 @@
  * last, live. The post it sits in is only a marker; everything drawn here
  * comes from /api/presence/now-playing (see lib/now-playing.ts).
  *
- * `tile` is the feed card; `modal` is the same card opened, with the songs
- * played before it underneath.
+ * `tile` is the feed card; `modal` is the same card opened, larger and with
+ * the album. Only the one song, playing or last played: the recent plays the
+ * API also returns are not shown.
  */
 
 import Image from 'next/image';
 
 import type { NowPlayingState, PresenceSong } from '@/lib/api';
 import { agoLabel, clock, positionAt, useNowPlaying, useServerNow } from '@/lib/now-playing';
-
-const RECENT_SHOWN = 8;
 
 function Cover({ song, className, sizes }: { song: PresenceSong; className: string; sizes: string }) {
   const [from, to] = song.gradient ?? ['#262626', '#0a0a0a'];
@@ -168,8 +167,6 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
     );
   }
 
-  const recent = data.recent.slice(0, RECENT_SHOWN);
-
   return (
     <div className="relative w-full overflow-hidden rounded-2xl text-white" role="group" aria-label="Now playing">
       {/* The cover again, blurred, as the glass behind the card. */}
@@ -198,23 +195,6 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
           </div>
         </div>
 
-        {recent.length > 0 && (
-          <div>
-            <h4 className="mb-3 text-xs uppercase tracking-wide text-white/60">Before that</h4>
-            <ul className="flex flex-col gap-3">
-              {recent.map((song, i) => (
-                <li key={`${song.played_at}-${i}`} className="flex items-center gap-3">
-                  <Cover song={song} sizes="40px" className="h-10 w-10 shrink-0 rounded-md" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{song.title}</p>
-                    <p className="truncate text-xs text-white/60">{song.artists.join(', ')}</p>
-                  </div>
-                  <span className="shrink-0 text-xs text-white/60">{agoLabel(song.played_at, serverNow)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );
