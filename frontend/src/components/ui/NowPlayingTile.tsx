@@ -15,11 +15,17 @@ import Image from 'next/image';
 import type { NowPlayingState, PresenceSong } from '@/lib/api';
 import { agoLabel, clock, positionAt, useNowPlaying, useServerNow } from '@/lib/now-playing';
 
+/**
+ * The cover over the song's gradient. `className` must position it: the
+ * image fills it, so it has to be `relative` or `absolute`. Setting
+ * `relative` here as well would fight an `absolute` passed in, and CSS order,
+ * not class order, decides which one wins.
+ */
 function Cover({ song, className, sizes }: { song: PresenceSong; className: string; sizes: string }) {
   const [from, to] = song.gradient ?? ['#262626', '#0a0a0a'];
   return (
     <div
-      className={`relative overflow-hidden ${className}`}
+      className={`overflow-hidden ${className}`}
       style={{ backgroundImage: `linear-gradient(135deg, ${from}, ${to})` }}
     >
       {song.artwork_url && (
@@ -182,7 +188,7 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
 
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
           <div className="w-48 shrink-0 sm:w-56">
-            <Cover song={track} sizes="224px" className="aspect-square w-full rounded-xl shadow-2xl" />
+            <Cover song={track} sizes="224px" className="relative aspect-square w-full rounded-xl shadow-2xl" />
           </div>
 
           <div className="min-w-0 flex-1">
