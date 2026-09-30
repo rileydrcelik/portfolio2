@@ -12,7 +12,7 @@
 
 import Image from 'next/image';
 import { useEffect } from 'react';
-import { Headphones, Loader2, RotateCcw, Square } from 'lucide-react';
+import { Loader2, Play, RotateCcw, Square } from 'lucide-react';
 
 import type { NowPlayingState, PresenceSong } from '@/lib/api';
 import { prepareListening, stopListening, toggleListening, useListenState } from '@/lib/live-listen';
@@ -92,36 +92,31 @@ function StatusRow({ data, serverNow }: { data: NowPlayingState; serverNow: numb
  * One audio element for the page, so the tile's and the modal's buttons are
  * the same control.
  */
-function ListenButton({ compact }: { compact: boolean }) {
+function ListenButton() {
   const state = useListenState();
-  const active = state === 'loading' || state === 'playing';
-  const label = state === 'playing' ? 'Stop' : state === 'loading' ? 'Connecting' : state === 'error' ? 'Retry' : 'Listen';
+  const label =
+    state === 'playing' ? 'Stop listening' : state === 'loading' ? 'Connecting' : state === 'error' ? 'Retry listening' : 'Listen live';
   return (
     <>
       <button
         type="button"
         onClick={toggleListening}
-        // The visible word is the name; when the tile hides it on a narrow
-        // screen, the same word is the label.
-        aria-label={compact ? label : undefined}
-        title={compact ? label : undefined}
+        aria-label={label}
+        title={label}
         aria-busy={state === 'loading'}
-        // Dark-tinted in both states: a lighter fill would lighten a bright
-        // cover under it rather than hold the text off it.
-        className={`flex min-h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none ${
-          active ? 'border-white/60 bg-black/55 text-white' : 'border-white/25 bg-black/45 text-white hover:bg-black/60'
-        }`}
+        // A bare symbol, no chip behind it. The shadow is what keeps it
+        // readable over a bright cover; the padding keeps a finger-sized target.
+        className="flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
       >
         {state === 'loading' ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
+          <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden />
         ) : state === 'playing' ? (
-          <Square className="h-3 w-3 fill-current" aria-hidden />
+          <Square className="h-4 w-4 fill-current" aria-hidden />
         ) : state === 'error' ? (
-          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+          <RotateCcw className="h-5 w-5" aria-hidden />
         ) : (
-          <Headphones className="h-3.5 w-3.5" aria-hidden />
+          <Play className="h-5 w-5 fill-current" aria-hidden />
         )}
-        <span className={compact ? 'hidden sm:inline' : undefined}>{label}</span>
       </button>
       <span className="sr-only" role="status" aria-live="polite">
         {state === 'loading' ? 'Connecting to the live audio' : state === 'error' ? 'Could not play the live audio' : ''}
@@ -190,7 +185,7 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/85" />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-2 p-4">
                 <StatusRow data={data} serverNow={serverNow} />
-                {live && <ListenButton compact />}
+                {live && <ListenButton />}
               </div>
               <div className="absolute inset-x-0 bottom-0 p-4">
                 <h3 className="truncate text-base font-semibold leading-snug">{track.title}</h3>
@@ -240,7 +235,7 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
       <div className="relative flex flex-col gap-6 p-8">
         <div className="flex items-center justify-between gap-2">
           <StatusRow data={data} serverNow={serverNow} />
-          {live && <ListenButton compact={false} />}
+          {live && <ListenButton />}
         </div>
 
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
