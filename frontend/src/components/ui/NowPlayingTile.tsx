@@ -12,7 +12,7 @@
 
 import Image from 'next/image';
 import { useEffect } from 'react';
-import { Loader2, Play, RotateCcw, Square } from 'lucide-react';
+import { HeadphoneOff, Headphones, Loader2, RotateCcw } from 'lucide-react';
 
 import type { NowPlayingState, PresenceSong } from '@/lib/api';
 import { prepareListening, stopListening, toggleListening, useListenState } from '@/lib/live-listen';
@@ -111,11 +111,11 @@ function ListenButton() {
         {state === 'loading' ? (
           <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden />
         ) : state === 'playing' ? (
-          <Square className="h-4 w-4 fill-current" aria-hidden />
+          <HeadphoneOff className="h-5 w-5" aria-hidden />
         ) : state === 'error' ? (
           <RotateCcw className="h-5 w-5" aria-hidden />
         ) : (
-          <Play className="h-5 w-5 fill-current" aria-hidden />
+          <Headphones className="h-5 w-5" aria-hidden />
         )}
       </button>
       <span className="sr-only" role="status" aria-live="polite">
