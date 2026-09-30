@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
-from app.routes import posts, upload, albums, notes_ingest, presence
+from app.routes import posts, upload, albums, notes_ingest, presence, live
 
 # Load environment variables
 load_dotenv()
@@ -43,6 +43,7 @@ app.include_router(upload.router)
 app.include_router(albums.router)
 app.include_router(notes_ingest.router)
 app.include_router(presence.router)
+app.include_router(live.router)
 
 @app.exception_handler(RequestValidationError)
 async def _log_validation_errors(request: Request, exc: RequestValidationError):

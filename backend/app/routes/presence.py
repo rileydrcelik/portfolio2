@@ -34,10 +34,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.lib.firebase_auth import verify_firebase_token
+from app.lib.live_relay import listen_available
 from app.lib.presence_state import Stored, accepts, effective_state
 from app.lib.s3 import delete_file_from_s3, upload_file_to_s3
 from app.models.post import Post
 from app.models.presence import NowPlaying, PresenceArtwork, RecentPlay
+from app.routes.live import relay as live_relay
 from app.routes.posts import generate_unique_slug
 from app.schemas.post import PostResponse
 
@@ -188,6 +190,8 @@ async def ingest(payload: PresenceIngest, db: Session = Depends(get_db)):
         need_artwork = art is None or art.art_rev != track.art_rev
 
     db.commit()
+    # Sharing switched off stops the live audio too, not just its button.
+    live_relay.set_hidden(payload.state == "hidden")
     _invalidate_read_cache()
     return {"accepted": True, "need_artwork": need_artwork}
 
@@ -285,6 +289,8 @@ def _read(db: Session) -> tuple[dict, str]:
         "last_active_at": _iso(eff.last_active_at),
         "server_now": _iso(now),
         "recent": [],
+        # Whether the card offers Listen: the phone is streaming its audio.
+        "live": listen_available(eff.state, live_relay.is_live(time.monotonic())),
     }
     if eff.state != "hidden":
         keys = set()
@@ -327,7 +333,9 @@ def _read(db: Session) -> tuple[dict, str]:
         ]
     # server_now is left out of the tag: it changes every read, and a card
     # holding an older one only loses a clock offset that has not moved.
-    etag = '"{}-{}-{}"'.format(row.version if row else 0, eff.state, body["last_active_at"] or "")
+    etag = '"{}-{}-{}-{}"'.format(
+        row.version if row else 0, eff.state, body["last_active_at"] or "", int(body["live"])
+    )
     return body, etag
 
 

@@ -482,6 +482,13 @@ export interface NowPlayingState {
   last_active_at: string | null;
   server_now: string;
   recent: (PresenceSong & { played_at: string })[];
+  /** The phone is streaming its audio: the card offers Listen. */
+  live?: boolean;
+}
+
+/** The phone's live audio, as an HLS playlist; see lib/live-listen.ts. */
+export function liveStreamUrl(): string {
+  return `${API_URL}/api/live/live.m3u8`;
 }
 
 /**

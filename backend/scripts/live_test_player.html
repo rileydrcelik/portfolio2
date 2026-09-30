@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live relay test</title>
+<style>
+  body { font: 15px system-ui, sans-serif; background: #0a0a0a; color: #eee; margin: 0; padding: 24px 16px; }
+  main { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  input, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #333; background: #161616; color: #eee; }
+  button { cursor: pointer; }
+  pre { background: #111; border-radius: 10px; padding: 12px; white-space: pre-wrap; font-size: 12px; max-height: 50vh; overflow: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Live relay test</h1>
+  <p>Plays the relay's HLS playlist: natively where the browser can (Safari), with hls.js elsewhere. Open with <code>?src=</code> to prefill the playlist URL.</p>
+  <input id="src" value="http://127.0.0.1:8001/api/live/live.m3u8">
+  <button id="play">Listen</button>
+  <audio id="audio" controls></audio>
+  <pre id="log"></pre>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  if (params.get('src')) document.getElementById('src').value = params.get('src');
+  const audio = document.getElementById('audio');
+  const log = (m) => { document.getElementById('log').textContent += new Date().toLocaleTimeString() + '  ' + m + '\n'; };
+  let hls = null;
+  document.getElementById('play').onclick = () => {
+    const src = document.getElementById('src').value;
+    if (hls) { hls.destroy(); hls = null; }
+    if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+      log('native HLS');
+      audio.src = src;
+    } else if (window.Hls && Hls.isSupported()) {
+      log('hls.js ' + Hls.version);
+      hls = new Hls({ liveSyncDurationCount: 2, liveMaxLatencyDurationCount: 5 });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => log('playlist parsed'));
+      hls.on(Hls.Events.FRAG_LOADED, (_, d) => log('segment ' + d.frag.sn));
+      hls.on(Hls.Events.ERROR, (_, d) => log('error ' + d.type + ' ' + d.details + (d.fatal ? ' (fatal)' : '')));
+      hls.loadSource(src);
+      hls.attachMedia(audio);
+    } else {
+      log('no HLS support');
+      return;
+    }
+    audio.play().then(() => log('playing')).catch((e) => log('play failed: ' + e));
+  };
+  audio.addEventListener('waiting', () => log('buffering'));
+  audio.addEventListener('ended', () => log('ended'));
+</script>
+</body>
+</html>

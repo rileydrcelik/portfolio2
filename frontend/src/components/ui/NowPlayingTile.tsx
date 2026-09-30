@@ -11,8 +11,11 @@
  */
 
 import Image from 'next/image';
+import { useEffect } from 'react';
+import { Headphones, Loader2, RotateCcw, Square } from 'lucide-react';
 
 import type { NowPlayingState, PresenceSong } from '@/lib/api';
+import { prepareListening, stopListening, toggleListening, useListenState } from '@/lib/live-listen';
 import { agoLabel, clock, positionAt, useNowPlaying, useServerNow } from '@/lib/now-playing';
 
 /**
@@ -84,6 +87,49 @@ function StatusRow({ data, serverNow }: { data: NowPlayingState; serverNow: numb
   );
 }
 
+/**
+ * Listen to the phone's live audio. Shown only while the phone is streaming.
+ * One audio element for the page, so the tile's and the modal's buttons are
+ * the same control.
+ */
+function ListenButton({ compact }: { compact: boolean }) {
+  const state = useListenState();
+  const active = state === 'loading' || state === 'playing';
+  const label = state === 'playing' ? 'Stop' : state === 'loading' ? 'Connecting' : state === 'error' ? 'Retry' : 'Listen';
+  return (
+    <>
+      <button
+        type="button"
+        onClick={toggleListening}
+        // The visible word is the name; when the tile hides it on a narrow
+        // screen, the same word is the label.
+        aria-label={compact ? label : undefined}
+        title={compact ? label : undefined}
+        aria-busy={state === 'loading'}
+        // Dark-tinted in both states: a lighter fill would lighten a bright
+        // cover under it rather than hold the text off it.
+        className={`flex min-h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none ${
+          active ? 'border-white/60 bg-black/55 text-white' : 'border-white/25 bg-black/45 text-white hover:bg-black/60'
+        }`}
+      >
+        {state === 'loading' ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
+        ) : state === 'playing' ? (
+          <Square className="h-3 w-3 fill-current" aria-hidden />
+        ) : state === 'error' ? (
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+        ) : (
+          <Headphones className="h-3.5 w-3.5" aria-hidden />
+        )}
+        <span className={compact ? 'hidden sm:inline' : undefined}>{label}</span>
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {state === 'loading' ? 'Connecting to the live audio' : state === 'error' ? 'Could not play the live audio' : ''}
+      </span>
+    </>
+  );
+}
+
 function hasProgress(data: NowPlayingState): boolean {
   return (data.state === 'playing' || data.state === 'paused') && (data.track?.duration_s ?? 0) > 0;
 }
@@ -94,6 +140,14 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
   // too so "N min ago" does not freeze -- it is one cheap re-render.
   const serverNow = useServerNow(offsetMs, data !== null);
   const modal = size === 'modal';
+  const live = data?.live === true;
+
+  // The phone stopped streaming: stop playing whatever is left buffered.
+  // Started: get the player ready, so the first press plays at once.
+  useEffect(() => {
+    if (live) prepareListening();
+    else stopListening();
+  }, [live]);
 
   const track = data?.track ?? null;
   const message = !data
@@ -134,8 +188,9 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
                 className="absolute inset-0"
               />
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/85" />
-              <div className="absolute inset-x-0 top-0 p-4">
+              <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-2 p-4">
                 <StatusRow data={data} serverNow={serverNow} />
+                {live && <ListenButton compact />}
               </div>
               <div className="absolute inset-x-0 bottom-0 p-4">
                 <h3 className="truncate text-base font-semibold leading-snug">{track.title}</h3>
@@ -183,7 +238,10 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black/80" />
 
       <div className="relative flex flex-col gap-6 p-8">
-        <StatusRow data={data} serverNow={serverNow} />
+        <div className="flex items-center justify-between gap-2">
+          <StatusRow data={data} serverNow={serverNow} />
+          {live && <ListenButton compact={false} />}
+        </div>
 
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
           <div className="w-48 shrink-0 sm:w-56">
