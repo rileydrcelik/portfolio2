@@ -58,7 +58,7 @@ function Progress({ position, duration }: { position: number; duration: number }
     <div className="mt-3" aria-hidden>
       <div className="h-[3px] w-full overflow-hidden rounded-[2px] bg-white/15">
         <div
-          className="h-full rounded-[2px] bg-white/80 transition-[width] duration-1000 ease-linear motion-reduce:transition-none"
+          className="h-full rounded-[2px] bg-white/80"
           style={{ width: `${Math.min(100, (position / duration) * 100)}%` }}
         />
       </div>
