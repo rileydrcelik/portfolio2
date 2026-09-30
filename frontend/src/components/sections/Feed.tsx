@@ -688,6 +688,29 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
                     ? <NoteTile item={item} />
                     : <ImageTile item={item} index={index} />;
 
+                // The now-playing card is live content, not a post to open:
+                // no link, no pointer, no hover or press motion.
+                if (item.isNowPlaying) {
+                  return (
+                    <motion.div
+                      key={item.id}
+                      className="absolute"
+                      style={{
+                        left: position.x,
+                        top: position.y,
+                        width: position.width,
+                        height: position.height,
+                      }}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0, margin: "200px" }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    >
+                      {Tile}
+                    </motion.div>
+                  );
+                }
+
                 return (
                   <motion.div
                     key={item.id}

@@ -106,11 +106,10 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
 
   if (!modal) {
     // The feed card: the cover full-bleed with the song over a gradient at its
-    // foot, like an image tile. `group` is on the outer div and the hover on
-    // the card inside it, as in NoteTile.
+    // foot, like an image tile. Not clickable, so no hover treatment either.
     return (
-      <div className="group h-full" role="group" aria-label="Now playing">
-        <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 text-white shadow-lg transition-all duration-300 group-hover:border-white/25 group-hover:shadow-xl">
+      <div className="h-full" role="group" aria-label="Now playing">
+        <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 text-white shadow-lg">
           {!data || !track || data.state === 'hidden' ? (
             <>
               {/* Loading takes the loaded card's shape: a cover, and text at its foot. */}
@@ -132,7 +131,7 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
               <Cover
                 song={track}
                 sizes="(max-width: 768px) 50vw, 25vw"
-                className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transition-none"
+                className="absolute inset-0"
               />
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/85" />
               <div className="absolute inset-x-0 top-0 p-4">
