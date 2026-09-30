@@ -106,7 +106,7 @@ function ListenButton() {
         aria-busy={state === 'loading'}
         // A bare symbol, no chip behind it. The shadow is what keeps it
         // readable over a bright cover; the padding keeps a finger-sized target.
-        className="flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
+        className="flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg text-white/60 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
       >
         {state === 'loading' ? (
           <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden />
