@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.post import Post
 from app.schemas.post import PostCreate, PostUpdate, PostResponse
 from app.lib.s3 import delete_file_from_s3
+from app.lib.feed_order import feed_ordering
 from app.lib.firebase_auth import verify_firebase_token
 from app.lib import aiko_sync
 
@@ -49,6 +50,7 @@ async def get_posts(
     limit: int = 100,
     offset: int = 0,
     sort_by: str = "date",
+    pin_now_playing: bool = False,
     db: Session = Depends(get_db)
 ):
     """Get all posts with optional filters"""
@@ -65,11 +67,10 @@ async def get_posts(
     if is_favorite is not None:
         query = query.filter(Post.is_favorite == is_favorite)
     
+    ordering = feed_ordering(Post, sort_by, pin_now_playing)
+
     try:
-        if sort_by == 'updated_at':
-            posts = query.order_by(desc(Post.updated_at)).limit(limit).offset(offset).all()
-        else:
-            posts = query.order_by(desc(Post.date)).limit(limit).offset(offset).all()
+        posts = query.order_by(*ordering).limit(limit).offset(offset).all()
         return posts
     except Exception as exc:
         logger.exception("[Posts] Failed to fetch posts", extra={

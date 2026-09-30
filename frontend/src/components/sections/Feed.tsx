@@ -109,6 +109,7 @@ interface FeedProps {
   category?: string; // Optional category to fetch from database
   useDatabase?: boolean; // Flag to use database instead of static images
   limit?: number; // Optional limit when fetching from database
+  pinNowPlaying?: boolean; // Put the now-playing card first (home feed)
 }
 
 interface Position {
@@ -440,7 +441,7 @@ const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 1
   return { positions, containerHeight };
 };
 
-export default function Feed({ directory, activeAlbum = 'all', category, useDatabase = false, limit }: FeedProps) {
+export default function Feed({ directory, activeAlbum = 'all', category, useDatabase = false, limit, pinNowPlaying = false }: FeedProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [selectedImage, setSelectedImage] = useState<FeedItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -477,8 +478,9 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
         if (useDatabase) {
           // Fetch posts from database with filters
-          const params: { category?: string; limit?: number; album?: string; offset?: number; is_favorite?: boolean } = {
+          const params: { category?: string; limit?: number; album?: string; offset?: number; is_favorite?: boolean; pin_now_playing?: boolean } = {
             category,
+            pin_now_playing: pinNowPlaying,
             limit: fetchLimit,
             offset: 0
           };
@@ -514,7 +516,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     };
 
     loadFeedItems();
-  }, [directory, category, useDatabase, activeAlbum, fetchLimit]);
+  }, [directory, category, useDatabase, activeAlbum, fetchLimit, pinNowPlaying]);
 
   const handleLoadMore = useCallback(async () => {
     if (!useDatabase || isLoading || isFetchingRef.current) return;
@@ -522,8 +524,9 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     isFetchingRef.current = true;
     setIsFetchingMore(true);
     try {
-      const params: { category?: string; limit?: number; album?: string; offset?: number; is_favorite?: boolean } = {
+      const params: { category?: string; limit?: number; album?: string; offset?: number; is_favorite?: boolean; pin_now_playing?: boolean } = {
         category,
+        pin_now_playing: pinNowPlaying,
         limit: fetchLimit,
         offset: offsetRef.current
       };
@@ -552,7 +555,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       isFetchingRef.current = false;
       setIsFetchingMore(false);
     }
-  }, [useDatabase, isLoading, category, fetchLimit, activeAlbum]);
+  }, [useDatabase, isLoading, category, fetchLimit, activeAlbum, pinNowPlaying]);
 
   const sentinelRef = useInfiniteScroll(
     handleLoadMore,

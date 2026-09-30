@@ -54,6 +54,7 @@ export default function HomePage() {
           directory="pinterest_placeholders"
           useDatabase={true}
           limit={50}
+          pinNowPlaying
         />
       </div>
     </div>
