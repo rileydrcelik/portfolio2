@@ -110,18 +110,6 @@ export function positionAt(data: NowPlayingState, serverNowMs: number): number {
   return duration ? Math.min(position, duration) : position;
 }
 
-/** "just now", "12 min ago", "3 h ago", "yesterday", "4 days ago". */
-export function agoLabel(iso: string | null, serverNowMs: number): string {
-  if (!iso) return '';
-  const minutes = Math.floor((serverNowMs - Date.parse(iso)) / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? 'yesterday' : `${days} days ago`;
-}
-
 /** 83 -> "1:23". */
 export function clock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));

@@ -16,7 +16,7 @@ import { HeadphoneOff, Headphones, Loader2, RotateCcw } from 'lucide-react';
 
 import type { NowPlayingState, PresenceSong } from '@/lib/api';
 import { prepareListening, stopListening, toggleListening, useListenState } from '@/lib/live-listen';
-import { agoLabel, clock, positionAt, useNowPlaying, useServerNow } from '@/lib/now-playing';
+import { clock, positionAt, useNowPlaying, useServerNow } from '@/lib/now-playing';
 
 /**
  * The cover over the song's gradient. `className` must position it: the
@@ -70,19 +70,19 @@ function Progress({ position, duration }: { position: number; duration: number }
   );
 }
 
-function statusLine(data: NowPlayingState, serverNow: number): string {
+function statusLine(data: NowPlayingState): string {
   if (data.state === 'playing') return 'Now playing';
   if (data.state === 'paused') return 'Paused';
-  return `Last played · ${agoLabel(data.last_active_at, serverNow)}`;
+  return 'Last played';
 }
 
-function StatusRow({ data, serverNow }: { data: NowPlayingState; serverNow: number }) {
+function StatusRow({ data }: { data: NowPlayingState }) {
   return (
     <div className="flex min-w-0 items-center gap-2 text-xs uppercase tracking-wide text-white/80">
       <span className="shrink-0">
         <Bars moving={data.state === 'playing'} />
       </span>
-      <span className="min-w-0 truncate">{statusLine(data, serverNow)}</span>
+      <span className="min-w-0 truncate">{statusLine(data)}</span>
     </div>
   );
 }
@@ -131,8 +131,9 @@ function hasProgress(data: NowPlayingState): boolean {
 
 export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'modal' }) {
   const { data, offsetMs, failed } = useNowPlaying();
-  // Ticks every second while playing (the bar), and every second otherwise
-  // too so "N min ago" does not freeze -- it is one cheap re-render.
+  // Ticks every second for the bar. It keeps ticking when nothing plays so
+  // the clock is already current when a song starts, and the bar is drawn at
+  // the song's position rather than jumping there a second later.
   const serverNow = useServerNow(offsetMs, data !== null);
   const modal = size === 'modal';
   const live = data?.live === true;
@@ -184,7 +185,7 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
               />
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/85" />
               <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-2 p-4">
-                <StatusRow data={data} serverNow={serverNow} />
+                <StatusRow data={data} />
                 {live && <ListenButton />}
               </div>
               <div className="absolute inset-x-0 bottom-0 p-4">
@@ -234,7 +235,7 @@ export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'mod
 
       <div className="relative flex flex-col gap-6 p-8">
         <div className="flex items-center justify-between gap-2">
-          <StatusRow data={data} serverNow={serverNow} />
+          <StatusRow data={data} />
           {live && <ListenButton />}
         </div>
 
