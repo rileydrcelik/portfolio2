@@ -70,10 +70,12 @@ function Progress({ position, duration }: { position: number; duration: number }
   );
 }
 
+/**
+ * Two things only: a song is playing, or one played. Paused is not said --
+ * a paused song reads as the last one played, the same as a stopped one.
+ */
 function statusLine(data: NowPlayingState): string {
-  if (data.state === 'playing') return 'Now playing';
-  if (data.state === 'paused') return 'Paused';
-  return 'Last played';
+  return data.state === 'playing' ? 'Listening to' : 'Recently played';
 }
 
 function StatusRow({ data }: { data: NowPlayingState }) {
@@ -126,7 +128,8 @@ function ListenButton() {
 }
 
 function hasProgress(data: NowPlayingState): boolean {
-  return (data.state === 'playing' || data.state === 'paused') && (data.track?.duration_s ?? 0) > 0;
+  // Only while it plays: a bar stopped partway is the paused status again.
+  return data.state === 'playing' && (data.track?.duration_s ?? 0) > 0;
 }
 
 export default function NowPlayingTile({ size = 'tile' }: { size?: 'tile' | 'modal' }) {
