@@ -323,12 +323,13 @@ const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 1
   const prevItemsKeyRef = useRef<string>('');
 
   useEffect(() => {
-    // Skip if items haven't actually changed (same IDs)
-    if (itemsKey === prevItemsKeyRef.current && itemsLength > 0) {
-      console.log('🎯 Skipping - items unchanged');
+    // Skip if neither the items (same IDs) nor the width have changed
+    const layoutKey = `${containerWidth}|${itemsKey}`;
+    if (layoutKey === prevItemsKeyRef.current && itemsLength > 0) {
+      console.log('🎯 Skipping - items and width unchanged');
       return;
     }
-    prevItemsKeyRef.current = itemsKey;
+    prevItemsKeyRef.current = layoutKey;
 
     console.log('🎯 use2DPacking effect running:', { itemsLength, containerWidth });
     if (itemsLength === 0 || containerWidth === 0) {
@@ -427,7 +428,7 @@ const use2DPacking = (items: FeedItem[], containerWidth: number, gap: number = 1
         // Check if any position changed
         const changed = prev.some((oldPos, i) => {
           const newPos = allPositions[i];
-          return !newPos || oldPos.x !== newPos.x || oldPos.y !== newPos.y || oldPos.item.id !== newPos.item.id;
+          return !newPos || oldPos.x !== newPos.x || oldPos.y !== newPos.y || oldPos.width !== newPos.width || oldPos.item.id !== newPos.item.id;
         });
         return changed ? allPositions : prev;
       });
@@ -454,14 +455,31 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   const previousUrlRef = useRef<string | null>(null);
   const offsetRef = useRef(0); // Track API offset independently of feedItems.length
   const isFetchingRef = useRef(false); // Ref-based guard to prevent concurrent fetches
+  const requestGenRef = useRef(0); // Bumped on every filter change; stale responses are dropped
   const { token: authToken, user } = useAuth();
 
-  // Callback ref to measure width when element is mounted
+  // Callback ref to measure width when element is mounted, and again whenever
+  // it resizes (window resize, rotation, scrollbar appearing). Returning the
+  // cleanup lets React 19 disconnect the observer when the node unmounts.
   const containerRefCallback = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      console.log('🔍 Container mounted, measuring width:', node.offsetWidth);
-      setContainerWidth(node.offsetWidth);
-    }
+    if (!node) return;
+    console.log('🔍 Container mounted, measuring width:', node.offsetWidth);
+    setContainerWidth(node.offsetWidth);
+
+    if (typeof ResizeObserver === 'undefined') return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const width = node.offsetWidth;
+        setContainerWidth(prev => (prev === width ? prev : width));
+      });
+    });
+    observer.observe(node);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, []);
 
   // Fetch posts from database (paginated)
@@ -469,6 +487,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
     const loadFeedItems = async () => {
       console.log('🚀 Loading feed items...', { useDatabase, category, directory, activeAlbum });
 
+      const gen = ++requestGenRef.current;
       setIsLoading(true);
       setFeedItems([]); // Reset items on filter change
       offsetRef.current = 0;
@@ -495,6 +514,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
 
           const posts = await getPosts(params);
           items = await convertPostsToFeedItems(posts);
+          if (gen !== requestGenRef.current) return;
           console.log('✅ Feed items loaded from database:', items.length, 'items');
 
           offsetRef.current = posts.length;
@@ -502,16 +522,18 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
         } else {
           // Use static images - fetch all (no album filtering)
           items = await generateFeedItems(directory, activeAlbum);
+          if (gen !== requestGenRef.current) return;
           console.log('✅ All feed items loaded from static images:', items.length, 'items');
           setHasMore(false); // Static images are all loaded at once
         }
 
         setFeedItems(items);
       } catch (error) {
+        if (gen !== requestGenRef.current) return;
         console.error('❌ Error loading feed items:', error);
         setFeedItems([]);
       } finally {
-        setIsLoading(false);
+        if (gen === requestGenRef.current) setIsLoading(false);
       }
     };
 
@@ -521,6 +543,7 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   const handleLoadMore = useCallback(async () => {
     if (!useDatabase || isLoading || isFetchingRef.current) return;
 
+    const gen = requestGenRef.current;
     isFetchingRef.current = true;
     setIsFetchingMore(true);
     try {
@@ -540,8 +563,10 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
       }
 
       const posts = await getPosts(params);
-      offsetRef.current += posts.length;
       const newItems = await convertPostsToFeedItems(posts);
+      // The album/category changed while this page was in flight
+      if (gen !== requestGenRef.current) return;
+      offsetRef.current += posts.length;
 
       setFeedItems(prev => {
         const existingIds = new Set(prev.map(item => item.id));
@@ -648,8 +673,11 @@ export default function Feed({ directory, activeAlbum = 'all', category, useData
   }, []);
 
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      if (event.state && event.state.modal && isModalOpen) {
+    // Any history move while the modal is open (Back from the post URL lands
+    // on an entry without `modal` state) means the post is no longer current.
+    // The URL has already changed, so drop previousUrlRef rather than replace.
+    const handlePopState = () => {
+      if (isModalOpen) {
         setIsModalOpen(false);
         setSelectedImage(null);
         previousUrlRef.current = null;

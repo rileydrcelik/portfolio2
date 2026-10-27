@@ -65,7 +65,13 @@ async def verify_firebase_token(authorization: str = Header(..., alias='Authoriz
 
     email = (decoded_token.get('email') or '').lower()
     allowed_emails = get_allowed_emails()
-    if allowed_emails and email not in allowed_emails:
+    if not allowed_emails:
+        # Fail closed: without an allowlist any Google account would be admin.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Admin access is disabled: FIREBASE_ALLOWED_EMAILS is not configured',
+        )
+    if email not in allowed_emails:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is not authorized to perform this action')
 
     return decoded_token

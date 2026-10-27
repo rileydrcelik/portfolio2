@@ -2,8 +2,14 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import Optional
 from app.lib.s3 import upload_file_to_s3, delete_file_from_s3
 from app.lib.firebase_auth import verify_firebase_token
-from PIL import Image
+from PIL import Image, ImageOps
 import io
+
+def _is_animated(data: bytes) -> bool:
+    try:
+        return getattr(Image.open(io.BytesIO(data)), "is_animated", False)
+    except Exception:
+        return False
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -30,10 +36,11 @@ async def upload_image(
     
     # Validate file type
     allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-    is_image = file.content_type.startswith('image/')
-    is_audio = file.content_type.startswith('audio/')
-    is_video = file.content_type.startswith('video/')
-    is_application = file.content_type.startswith('application/')  # pdf, etc.
+    content_type = file.content_type or ''
+    is_image = content_type.startswith('image/')
+    is_audio = content_type.startswith('audio/')
+    is_video = content_type.startswith('video/')
+    is_application = content_type.startswith('application/')  # pdf, etc.
 
     if not is_image and not is_audio and not is_video and not is_application:
         print(f"[Upload] Invalid file type: {file.content_type}")
@@ -62,11 +69,15 @@ async def upload_image(
         final_filename = file.filename
         final_content_type = file.content_type
 
-        # Optimize Image if it's an image
-        if is_image:
+        # Optimize Image if it's an image. Animated images keep their original
+        # bytes and type: the WebP conversion below would keep only one frame.
+        if is_image and not _is_animated(file_content):
             try:
                 print("[Upload] Optimizing image...")
                 img = Image.open(io.BytesIO(file_content))
+                # Apply the EXIF orientation; the WebP re-encode drops the tag,
+                # which would otherwise leave phone photos sideways.
+                img = ImageOps.exif_transpose(img)
                 
                 # Convert to RGB if needed (e.g. for PNGs with transparency if we wanted to drop it, but WebP supports it)
                 # WebP supports RGBA, so we can keep it usually. But if it's CMYK etc, convert.
@@ -87,8 +98,7 @@ async def upload_image(
                 final_content = output_buffer.getvalue()
                 
                 # Update metadata
-                original_ext = os.path.splitext(file.filename)[1]
-                final_filename = file.filename.replace(original_ext, '.webp')
+                final_filename = os.path.splitext(file.filename or 'image')[0] + '.webp'
                 final_content_type = 'image/webp'
                 
                 print(f"[Upload] Optimized size: {len(final_content)} bytes")

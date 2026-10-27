@@ -68,7 +68,9 @@ export default function SplashSection() {
           // Update cache
           localStorage.setItem('splash_featured_post', JSON.stringify(newPost));
         } else {
-          if (!cached) setFeaturedPost(null);
+          // Nothing is featured any more; don't keep showing a stale cached post
+          localStorage.removeItem('splash_featured_post');
+          setFeaturedPost(null);
         }
       } catch (error) {
         console.error('[SplashSection] Failed to fetch featured post:', error);
@@ -120,6 +122,10 @@ export default function SplashSection() {
     if (!featuredPost?.slug || !featuredPost?.category || !featuredPost?.album) return null;
     return `/${encodeURIComponent(featuredPost.category)}/${encodeURIComponent(featuredPost.album)}/${encodeURIComponent(featuredPost.slug)}`;
   }, [featuredPost]);
+
+  // No title while the featured post is loading; the site name if none is featured.
+  const splashTitle = featuredPost?.title || (isLoadingPost ? '' : 'Riley Drcelik');
+  const splashDescription = featuredPost?.description?.trim() ?? '';
 
   useEffect(() => {
     setImageLoaded(false);
@@ -418,20 +424,24 @@ export default function SplashSection() {
             {postLink ? (
               <Link href={postLink} className="block group">
                 <h1 className={`text-5xl sm:text-6xl md:text-8xl font-serif mb-1 select-none leading-tight transition-all duration-300 ${toneStyles.title} ${toneStyles.titleHover}`}>
-                  {featuredPost?.title || 'PICNIC'}
+                  {splashTitle}
                 </h1>
-                <p className={`text-xl md:text-2xl font-serif select-none transition-all duration-300 ${toneStyles.description} ${toneStyles.descriptionHover}`}>
-                  {featuredPost?.description || 'short description of the project...'}
-                </p>
+                {splashDescription && (
+                  <p className={`text-xl md:text-2xl font-serif select-none transition-all duration-300 ${toneStyles.description} ${toneStyles.descriptionHover}`}>
+                    {splashDescription}
+                  </p>
+                )}
               </Link>
             ) : (
               <>
                 <h1 className={`text-5xl sm:text-6xl md:text-8xl font-serif mb-1 select-none leading-tight transition-all duration-300 ${toneStyles.title}`}>
-                  {featuredPost?.title || 'PICNIC'}
+                  {splashTitle}
                 </h1>
-                <p className={`text-xl md:text-2xl font-serif select-none transition-all duration-300 ${toneStyles.description}`}>
-                  {featuredPost?.description || 'short description of the project...'}
-                </p>
+                {splashDescription && (
+                  <p className={`text-xl md:text-2xl font-serif select-none transition-all duration-300 ${toneStyles.description}`}>
+                    {splashDescription}
+                  </p>
+                )}
               </>
             )}
           </div>
