@@ -34,7 +34,6 @@ carrying another column and another delete path for them.
 
 import asyncio
 import io
-import json
 import logging
 import os
 from types import SimpleNamespace
@@ -120,7 +119,6 @@ def snapshot(post) -> SimpleNamespace:
         gallery_urls=list(post.gallery_urls or []),
         instagram_media_id=post.instagram_media_id,
         instagram_hashtags=list(post.instagram_hashtags or []),
-        instagram_photo_tags=dict(post.instagram_photo_tags or {}),
     )
 
 
@@ -165,26 +163,6 @@ def _caption(post, link: Optional[str] = None) -> str:
     if len(text) > room:
         text = text[: max(room - 1, 0)].rstrip() + "…"
     return "\n\n".join(part for part in (text, *tail) if part)
-
-
-def _user_tag_params(post, image_url: str) -> dict:
-    """The people tagged in one photo, for its image container (a single
-    image, or one item of a carousel -- the carousel container itself takes no
-    tags).
-
-    Instagram wants each tag pinned to a spot on the image, as fractions of its
-    width and height. The admin form only takes usernames, so the tags are
-    spread across the middle of the photo; they show when the photo is tapped.
-    """
-    usernames = (getattr(post, "instagram_photo_tags", None) or {}).get(image_url) or []
-    if not usernames:
-        return {}
-    count = len(usernames)
-    tags = [
-        {"username": name, "x": round((index + 1) / (count + 1), 3), "y": 0.5}
-        for index, name in enumerate(usernames)
-    ]
-    return {"user_tags": json.dumps(tags)}
 
 
 def _clamp_aspect(aspect: float) -> float:
@@ -332,18 +310,6 @@ async def publish_post(post, link: Optional[str] = None) -> dict:
             return None, {"ok": False, "error": wait_error}
         return container_id, None
 
-    async def create_tagged_container(data: dict, image_url: str) -> tuple[Optional[str], Optional[dict]]:
-        """An image container with the people tagged in that photo. If
-        Instagram turns the tags down (a username that doesn't exist, an
-        account that can't be tagged) the photo goes out untagged rather than
-        not at all."""
-        tags = _user_tag_params(post, image_url)
-        container_id, failure = await create_container({**data, **tags})
-        if failure and tags:
-            logger.warning("[instagram] retrying a photo of post %s without user tags", post_id)
-            container_id, failure = await create_container(data)
-        return container_id, failure
-
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True) as client:
             # 1. Pull the site's own images and re-render them as JPEGs
@@ -357,12 +323,11 @@ async def publish_post(post, link: Optional[str] = None) -> dict:
                 sources.append(source.content)
 
             # 2. Create the media container: one image, or a carousel of child
-            #    containers padded to the first photo's (accepted) shape. Each
-            #    image container carries the people tagged in that photo.
+            #    containers padded to the first photo's (accepted) shape.
             if len(sources) == 1:
                 jpeg_url = await asyncio.to_thread(_prepare_jpeg, sources[0], post_id)
-                container_id, failure = await create_tagged_container(
-                    {"image_url": jpeg_url, "caption": _caption(post, link)}, images[0]
+                container_id, failure = await create_container(
+                    {"image_url": jpeg_url, "caption": _caption(post, link)}
                 )
                 if failure:
                     return failure
@@ -373,8 +338,8 @@ async def publish_post(post, link: Optional[str] = None) -> dict:
                     jpeg_url = await asyncio.to_thread(
                         _prepare_jpeg, content, f"{post_id}-{index + 1}", target
                     )
-                    child_id, failure = await create_tagged_container(
-                        {"image_url": jpeg_url, "is_carousel_item": "true"}, images[index]
+                    child_id, failure = await create_container(
+                        {"image_url": jpeg_url, "is_carousel_item": "true"}
                     )
                     if failure:
                         return failure

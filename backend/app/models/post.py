@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Text, DateTime, func, Boolean, Numeric, Integer, true
-from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 import uuid
 from app.database import Base
 
@@ -44,12 +44,10 @@ class Post(Base):
     # caption links to the Aiko pin.
     mirror_to_aiko = Column(Boolean, nullable=False, default=True, server_default=true())
     # What the Instagram post carries besides the caption. Only read when the
-    # post is published there, never shown on the site: hashtags (stored bare,
-    # without the '#') and the people tagged, as {image url: [usernames]} so
-    # each photo of a group keeps its own tags whatever order it ends up in.
-    # The instagram_collaborators, instagram_location_* and instagram_user_tags
-    # columns still exist in the database from earlier versions but are unused.
+    # post is published there, never shown on the site: hashtags, stored bare,
+    # without the '#'. The instagram_collaborators, instagram_location_*,
+    # instagram_user_tags and instagram_photo_tags columns still exist in the
+    # database from earlier versions but are unused.
     instagram_hashtags = Column(ARRAY(Text), nullable=False, default=list, server_default="{}")
-    instagram_photo_tags = Column(JSONB, nullable=False, default=dict, server_default="{}")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

@@ -31,7 +31,7 @@ interface ImageModalProps {
   price?: number | null;
   galleryUrls?: string[];
   canEdit?: boolean;
-  post?: Pick<Post, 'content_url' | 'is_major' | 'thumbnail_url' | 'splash_image_url' | 'gallery_urls' | 'printify_product_id' | 'listing_type' | 'stock' | 'accepts_offers' | 'fb_marketplace_url' | 'mirror_to_aiko' | 'instagram_media_id' | 'instagram_hashtags' | 'instagram_photo_tags'>;
+  post?: Pick<Post, 'content_url' | 'is_major' | 'thumbnail_url' | 'splash_image_url' | 'gallery_urls' | 'printify_product_id' | 'listing_type' | 'stock' | 'accepts_offers' | 'fb_marketplace_url' | 'mirror_to_aiko' | 'instagram_media_id' | 'instagram_hashtags'>;
   isActive?: boolean;
   isFavorite?: boolean;
   crossPostAlbums?: string[];
@@ -101,14 +101,6 @@ export default function ImageModal({
 
   const displayedImage = galleryImages[activeImageIndex] || image;
 
-  // People tagged in the photo on screen, keyed by its full-size URL. A lone
-  // photo may be shown by its thumbnail, so the cover also tries content_url.
-  const photoTags = post?.instagram_photo_tags ?? {};
-  const displayedTags =
-    photoTags[displayedImage] ??
-    (activeImageIndex === 0 ? photoTags[post?.content_url?.trim() ?? ''] : undefined) ??
-    [];
-
   useEffect(() => {
     setActiveImageIndex(0);
   }, [galleryImages, isOpen]);
@@ -158,7 +150,6 @@ export default function ImageModal({
   const reservedHeightPx =
     128 +
     (galleryImages.length > 1 ? 88 : 0) +
-    (displayedTags.length ? 28 : 0) +
     (isAudio && contentUrl ? 70 : 0);
 
   const isImageUrl = (value?: string | null) => {
@@ -476,24 +467,6 @@ export default function ImageModal({
                           </button>
                         ))}
                       </div>
-                    )}
-                    {displayedTags.length > 0 && (
-                      <p className="text-sm text-white/50">
-                        with{' '}
-                        {displayedTags.map((name, index) => (
-                          <span key={name}>
-                            {index > 0 && ' · '}
-                            <a
-                              href={`https://www.instagram.com/${name}/`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-white/80 hover:text-white hover:underline"
-                            >
-                              @{name}
-                            </a>
-                          </span>
-                        ))}
-                      </p>
                     )}
                     {isAudio && contentUrl && (
                       <audio

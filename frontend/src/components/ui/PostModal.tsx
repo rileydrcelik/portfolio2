@@ -878,10 +878,7 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
         postData.gallery_urls = galleryUrls;
       }
       if (willPostToInstagram) {
-        // The photos went up in galleryFiles' order; a single photo is the cover.
-        const photoUrls = galleryFiles.length > 1 ? galleryUrls : [uploadedContentUrl];
-        const photos = galleryFiles.map((file, index) => ({ key: photoKey(file), url: photoUrls[index] }));
-        Object.assign(postData, instagramDetailsPayload(instagramDetails, photos));
+        Object.assign(postData, instagramDetailsPayload(instagramDetails));
       }
 
       console.log('[PostModal] Post data prepared:', postData);
@@ -1709,7 +1706,6 @@ export default function PostModal({ isOpen, onClose, defaultSubject = '', defaul
                     <InstagramDetailsFields
                       value={instagramDetails}
                       onChange={(patch) => setInstagramDetails(prev => ({ ...prev, ...patch }))}
-                      photos={galleryFiles.map((file, index) => ({ key: photoKey(file), preview: galleryPreviews[index] }))}
                     />
                   )}
 
