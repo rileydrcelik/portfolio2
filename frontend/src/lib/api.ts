@@ -113,15 +113,12 @@ export interface Post {
   /** Mirrored to Aiko (art/photo). Off means the admin opted this post out. */
   mirror_to_aiko?: boolean;
   instagram_hashtags?: string[];
-  instagram_photo_tags?: Record<string, string[]>;
 }
 
 /** What an Instagram post carries besides its caption. Read only at publish. */
 export interface InstagramDetails {
   /** Bare, without the '#'. */
   instagram_hashtags: string[];
-  /** Usernames tagged in each photo, by image URL; at most 20 a photo. */
-  instagram_photo_tags: Record<string, string[]>;
 }
 
 export interface PostCreate extends Partial<InstagramDetails> {

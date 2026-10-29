@@ -1,13 +1,11 @@
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from typing import Dict, Literal, Optional, List
+from typing import Literal, Optional, List
 from uuid import UUID
 import re
 
-# Instagram's own limits: 30 hashtags a post, 20 people tagged per photo.
+# Instagram's own limit.
 MAX_INSTAGRAM_HASHTAGS = 30
-MAX_INSTAGRAM_USER_TAGS = 20
-_INSTAGRAM_USERNAME = re.compile(r"^[a-z0-9._]{1,30}$")
 
 
 def _clean_hashtags(tags: Optional[List[str]]) -> Optional[List[str]]:
@@ -27,34 +25,6 @@ def _clean_hashtags(tags: Optional[List[str]]) -> Optional[List[str]]:
     return cleaned
 
 
-def _clean_usernames(names: List[str]) -> List[str]:
-    cleaned = []
-    for name in names:
-        name = (name or "").strip().lstrip("@").lower()
-        if not name:
-            continue
-        if not _INSTAGRAM_USERNAME.match(name):
-            raise ValueError(f"'{name}' isn't an Instagram username")
-        if name not in cleaned:
-            cleaned.append(name)
-    if len(cleaned) > MAX_INSTAGRAM_USER_TAGS:
-        raise ValueError(f"Instagram allows at most {MAX_INSTAGRAM_USER_TAGS} people tagged in a photo")
-    return cleaned
-
-
-def _clean_photo_tags(tags: Optional[Dict[str, List[str]]]) -> Optional[Dict[str, List[str]]]:
-    """{image url: [usernames]}, with photos nobody is tagged in left out."""
-    if tags is None:
-        return None
-    cleaned = {}
-    for url, names in tags.items():
-        url = (url or "").strip()
-        names = _clean_usernames(names or [])
-        if url and names:
-            cleaned[url] = names
-    return cleaned
-
-
 class InstagramFields(BaseModel):
     """Validation shared by the create and update schemas."""
 
@@ -62,11 +32,6 @@ class InstagramFields(BaseModel):
     @classmethod
     def _hashtags(cls, v):
         return _clean_hashtags(v)
-
-    @field_validator("instagram_photo_tags", check_fields=False)
-    @classmethod
-    def _photo_tags(cls, v):
-        return _clean_photo_tags(v)
 
 class PostBase(InstagramFields):
     category: str = Field(..., description="Category: art, photo, music, projects, bio, apparel")
@@ -91,7 +56,6 @@ class PostBase(InstagramFields):
     fb_marketplace_url: Optional[str] = Field(default=None, description="The same item on Facebook Marketplace")
     mirror_to_aiko: bool = Field(default=True, description="Mirror this art/photo post to Aiko")
     instagram_hashtags: List[str] = Field(default_factory=list, description="Hashtags for the Instagram caption, without '#'")
-    instagram_photo_tags: Dict[str, List[str]] = Field(default_factory=dict, description="Instagram usernames tagged in each photo, by image URL")
 
 class PostCreate(PostBase):
     slug: Optional[str] = Field(default=None, description="Custom slug override")
@@ -127,7 +91,6 @@ class PostUpdate(InstagramFields):
     fb_marketplace_url: Optional[str] = None
     mirror_to_aiko: Optional[bool] = None
     instagram_hashtags: Optional[List[str]] = None
-    instagram_photo_tags: Optional[Dict[str, List[str]]] = None
     date: Optional[datetime] = None
     
     class Config:
